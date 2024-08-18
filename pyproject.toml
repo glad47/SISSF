@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[metadata]
+name = "project"
+version = "0.0.1"
+
+[tool.setuptools.packages]
+find = {}  # Scan the project directory with the default parameters
+
+[project]
+name = "project"
+version = "0.0.1"
+authors = [
+  { name="Aziz", email="ggffhh3344@gmail.com" },
+]
+description = "Sample project for medium article"
+readme = "README.md"
+requires-python = ">=3.1"

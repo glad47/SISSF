@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: project
+Version: 0.0.1
+Summary: Sample project for medium article
+Author-email: Aziz <ggffhh3344@gmail.com>
+Requires-Python: >=3.1
+Description-Content-Type: text/markdown
