@@ -5,3 +5,5 @@
 *.pickle
 *.npz
 *.log
+dist
+.vcode

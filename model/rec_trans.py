@@ -1,4 +1,6 @@
-
+## Author: ggffhh3344@gmail.com Abdulaziz Ahmed
+## Date: 2024-06-11 11:15:59
+## LastEditTime: 2024-08-18 10:15:14
 
 import math
 import torch
@@ -30,26 +32,27 @@ class MultiHeadAttention(nn.Module):
         self.out_projection = nn.Linear(d_model, d_model)
 
     def forward(self, query, key, value, mask=None):
+        # (bs, dim), (bs, dim), (bs, dim), None
         batch_size = query.size(0)
 
         # Linear projections in batch from d_model => h x d_k
-        query = self.query_projection(query).view(batch_size, -1, self.n_heads, self.d_k).transpose(1, 2)
-        key = self.key_projection(key).view(batch_size, -1, self.n_heads, self.d_k).transpose(1, 2)
-        value = self.value_projection(value).view(batch_size, -1, self.n_heads, self.d_k).transpose(1, 2)
+        query = self.query_projection(query).view(batch_size, -1, self.n_heads, self.d_k).transpose(1, 2) #(bs, n_heads, 1, d_k)
+        key = self.key_projection(key).view(batch_size, -1, self.n_heads, self.d_k).transpose(1, 2) #(bs, n_heads, 1, d_k)
+        value = self.value_projection(value).view(batch_size, -1, self.n_heads, self.d_k).transpose(1, 2) #(bs, n_heads, 1, d_k)
 
         # Apply attention on all the projected vectors in batch
-        scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(self.d_k)
+        scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(self.d_k) #(bs, n_heads, 1, 1)
         if mask is not None:
             scores = scores.masked_fill(mask == 0, float('-inf'))
-        p_attn = F.softmax(scores, dim=-1)
-        p_attn = self.dropout(p_attn)
-        attn = torch.matmul(p_attn, value)
+        p_attn = F.softmax(scores, dim=-1)      #(bs, n_heads, 1, 1)
+        p_attn = self.dropout(p_attn)           #(bs, n_heads, 1, 1)
+        attn = torch.matmul(p_attn, value)      #(bs, n_heads, 1, d_k)
 
         # Concatenate heads and put through final linear layer
-        attn = attn.transpose(1, 2).contiguous().view(batch_size, -1, self.n_heads * self.d_k)
-        output = self.out_projection(attn)
+        attn = attn.transpose(1, 2).contiguous().view(batch_size, -1, self.n_heads * self.d_k) #(bs, 1,  dim)
+        output = self.out_projection(attn)                                                     #(bs, 1,  dim)
 
-        return output
+        return output  #(bs, 1,  dim)
 
 
 
@@ -70,17 +73,18 @@ class TransformerEncoderLayer(nn.Module):
         self.dropout2 = nn.Dropout(dropout)
 
     def forward(self, src, src_mask):
+        # (bs, dim), None
         # Self-attention
-        src2 = self.self_attn(src, src, src, mask=src_mask).squeeze(1)
-        src = src + self.dropout1(src2)
-        src = self.norm1(src)
+        src2 = self.self_attn(src, src, src, mask=src_mask).squeeze(1)    #(bs,  dim)
+        src = src + self.dropout1(src2)                                   #(bs,  dim)
+        src = self.norm1(src)                                             #(bs,  dim)
 
         # Feed-forward
-        src2 = self.ffn(src)
-        src = src + self.dropout2(src2)
-        src = self.norm2(src)
+        src2 = self.ffn(src)                                              #(bs,  dim)
+        src = src + self.dropout2(src2)                                   #(bs,  dim)
+        src = self.norm2(src)                                             #(bs,  dim)
 
-        return src
+        return src  #(bs,  dim)
 
 class TransformerEncoder(nn.Module):
     def __init__(self, n_layers, embed_dim, n_heads, ffn_dim, dropout, att_dropout):
@@ -90,25 +94,22 @@ class TransformerEncoder(nn.Module):
             for _ in range(n_layers)
         ])
         self.norm = nn.LayerNorm(embed_dim)
-        self.output_projection = nn.Linear(embed_dim, embed_dim // 2)
+       
 
     def forward(self, src, src_mask):
         for layer in self.layers:
-            src = layer(src, src_mask)
-        src = self.norm(src)
-        src = self.output_projection(src)
-        return src   
+            src = layer(src, src_mask)  #(bs,  dim)
+        src = self.norm(src)            #(bs,  dim)
+        return src                      #(bs,  dim)
 
 
 class TransformerDecoderLayer(nn.Module):
     def __init__(self, embed_dim, n_heads, ffn_dim, dropout, att_dropout):
         super().__init__()
         self.self_attn = MultiHeadAttention(n_heads, embed_dim, dropout=att_dropout)
-        self.social_cross_attn = MultiHeadAttention(n_heads, embed_dim, dropout=att_dropout)
-        self.item_cross_attn = MultiHeadAttention(n_heads, embed_dim, dropout=att_dropout)
+        self.cross_attn = MultiHeadAttention(n_heads, embed_dim, dropout=att_dropout)
         self.norm1 = nn.LayerNorm(embed_dim)
-        self.norm_social = nn.LayerNorm(embed_dim)
-        self.norm_item = nn.LayerNorm(embed_dim)
+        self.norm_cross = nn.LayerNorm(embed_dim)
         self.dropout1 = nn.Dropout(dropout)
         
         self.ffn = nn.Sequential(
@@ -120,28 +121,27 @@ class TransformerDecoderLayer(nn.Module):
         self.norm3 = nn.LayerNorm(embed_dim)
         self.dropout3 = nn.Dropout(dropout)
 
-    def forward(self, tgt, social_emb, item_emb, tgt_mask, memory_mask):
+    def forward(self, tgt, embs, tgt_mask, memory_mask):
+        # (bs,  dim), (bs,  dim), None, None
         # Self-attention on the target sequence
-        tgt2 = self.self_attn(tgt, tgt, tgt, mask=tgt_mask).squeeze(1)
-        tgt = tgt + self.dropout1(tgt2)
-        tgt = self.norm1(tgt)
+        tgt2 = self.self_attn(tgt, tgt, tgt, mask=tgt_mask).squeeze(1)              # (bs,  dim)
+        tgt = tgt + self.dropout1(tgt2)                                             # (bs,  dim)
+        tgt = self.norm1(tgt)                                                       # (bs,  dim)
 
         # Cross-attention with the encoder's output (memory)
-        tgt2 = self.social_cross_attn(tgt, social_emb, social_emb, mask=memory_mask).squeeze(1)
-        tgt = tgt + self.dropout1(tgt2)
-        tgt = self.norm_social(tgt)
+        tgt2 = self.cross_attn(tgt, embs, embs, mask=memory_mask).squeeze(1)        # (bs,  dim)
+        tgt = tgt + self.dropout1(tgt2)                                             # (bs,  dim)
+        tgt = self.norm_cross(tgt)                                                  # (bs,  dim)
 
-        tgt3 = self.social_cross_attn(tgt, item_emb, item_emb, mask=memory_mask).squeeze(1)
-        tgt = tgt + self.dropout1(tgt3)
-        tgt = self.norm_item(tgt)
+        
 
 
         # Feed-forward network
-        tgt2 = self.ffn(tgt)
-        tgt = tgt + self.dropout3(tgt2)
-        tgt = self.norm3(tgt)
+        tgt2 = self.ffn(tgt)                                                        # (bs,  dim)
+        tgt = tgt + self.dropout3(tgt2)                                             # (bs,  dim)
+        tgt = self.norm3(tgt)                                                       # (bs,  dim)
 
-        return tgt
+        return tgt # (bs,  dim)
 
 class TransformerDecoder(nn.Module):
     def __init__(self, n_layers, embed_dim, n_heads, ffn_dim, dropout, n_items, att_dropout):
@@ -153,14 +153,15 @@ class TransformerDecoder(nn.Module):
         self.norm = nn.LayerNorm(embed_dim)
         self.output_projection = nn.Linear(embed_dim, n_items)  # Project to the number of items
 
-    def forward(self, tgt, social_emb, item_emb, tgt_mask, memory_mask):
+    def forward(self, tgt, embs, tgt_mask, memory_mask):
+        #(bs,  dim), (bs,  dim), None, None
         for layer in self.layers:
-            tgt = layer(tgt, social_emb,item_emb ,tgt_mask, memory_mask)
-        tgt = self.norm(tgt)
+            tgt = layer(tgt, embs ,tgt_mask, memory_mask) # (bs,  dim)
+        tgt = self.norm(tgt)  # (bs,  dim)
         
         # Project the output to the number of items
-        output = self.output_projection(tgt)
-        return output     
+        output = self.output_projection(tgt)  #(bs,  n_item)
+        return output    #(bs,  n_item)
 
 
 class RecommenderTransformer(nn.Module):
@@ -180,7 +181,7 @@ class RecommenderTransformer(nn.Module):
         # Transformer Encoder
         self.encoder = TransformerEncoder(
             n_layers=self.n_layers,
-            embed_dim=self.embed_dim * 2,
+            embed_dim=self.embed_dim,
             n_heads=self.n_heads,
             ffn_dim=self.ffn_dim,
             dropout=self.dropout,
@@ -198,21 +199,12 @@ class RecommenderTransformer(nn.Module):
             att_dropout= attention_dropout
         )
 
-    def forward(self, user_embeds, item_embeds, mask, multi= False):
-        # Embedding lookups
-        
-
-        # Concatenate embeddings
-        if multi:
-            combined_embeds = torch.cat((user_embeds, item_embeds), dim=2)
-            combined_embeds = torch.nn.ReLU()(combined_embeds).to(self.device)
-        else :
-            combined_embeds = torch.cat((user_embeds, item_embeds), dim=1)
-            combined_embeds = torch.nn.ReLU()(combined_embeds).to(self.device)   
+    def forward(self, embs, mask=None):
+        #(bs,  dim), None
         # Pass through the encoder
-        encoder_output = self.encoder(combined_embeds, None)
+        encoder_output = self.encoder(embs, mask) #(bs,  dim)
 
         # Pass through the decoder
-        decoder_output = self.decoder(encoder_output, user_embeds, item_embeds, None, None)  # Assuming no masks for simplicity
+        decoder_output = self.decoder(encoder_output, embs, mask, None)  #(bs,  n_item)
 
-        return decoder_output                    
+        return decoder_output   #(bs,  n_item)               

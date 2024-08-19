@@ -1,3 +1,7 @@
+## Author: ggffhh3344@gmail.com Abdulaziz Ahmed
+## Date: 2024-06-11 11:15:59
+## LastEditTime: 2024-08-18 10:15:14
+
 
 import json
 import torch
@@ -11,15 +15,7 @@ from util.util import *
 import random 
 from data.SingleDataset import SingleDataset
 from sklearn.model_selection import train_test_split
-# from util.disk import getCache
 
-
-# raw_cache = getCache('project')
-
-'''
-
-
-'''
 
 
 class DatasetSISSF():
@@ -154,10 +150,10 @@ class DatasetSISSF():
 
   
     def data_preprocess(self):
-        self.valid_data = SingleDataset(self._raw_data_process_no_shfting( self.valid_data , "Processing Valid Dataset"))
         self.train_data =SingleDataset(self._raw_data_process( self.train_data , "Processing Train Dataset"))
-       
+        self.valid_data = SingleDataset(self._raw_data_process_no_shfting( self.valid_data , "Processing Valid Dataset"))
         self.test_data = SingleDataset(self._raw_data_process_no_shfting( self.test_data , "Processing Test Dataset")) 
+    
 
        
         
@@ -170,6 +166,7 @@ class DatasetSISSF():
         augmented_conv = self.seperate_rec_items(augmented_conv)
         # augmented_conv = self.augment_nlp_context(augmented_conv)
         return augmented_conv
+    
     def _raw_data_process_no_shfting(self, raw_data, mode):
         logger.info(mode)
         augmented_conv = self.merge_conv_data_add_entities_mask(raw_data)
@@ -244,24 +241,6 @@ class DatasetSISSF():
     def seperate_rec_items(self, dataset):
         logger.info("Augment Conversations Seperate Recommended Items")
         augment_dataset = []
-        # if self.mode == 'conv':
-        #     for conv_dict in tqdm(dataset):
-        #         if len(conv_dict['items']) > 0 :
-        #             for movie in conv_dict['items']:
-        #                 if isinstance(movie, list):
-        #                     augment_conv_dict = deepcopy(conv_dict)
-        #                     augment_conv_dict['items'] = -1
-        #                     augment_dataset.append(augment_conv_dict)
-        #                 else :
-        #                     augment_conv_dict = deepcopy(conv_dict)
-        #                     augment_conv_dict['items'] = movie
-        #                     augment_dataset.append(augment_conv_dict)
-        #         else :
-        #             augment_conv_dict = deepcopy(conv_dict)
-        #             augment_conv_dict['items'] = -1
-        #             augment_dataset.append(augment_conv_dict)
-
-        # else:
         for conv_dict in tqdm(dataset):
             if len(conv_dict['items']) > 0 :
                 for movie in conv_dict['items']:
@@ -563,11 +542,7 @@ class DatasetSISSF():
             batch_item_masks_in_context.append(self.build_sample_item_mask_in_context(conv_dict['item_masks_in_context']))
             batch_item_ids_in_context.extend(conv_dict['item_ids_in_context'])
             batch_item_id.append(conv_dict['items'])
-            # input_ids, target_pos, input_mask, sample_negs = self.build_item_seq_for_session_rec(conv_dict)
-            # batch_input_ids.append(input_ids)
-            # batch_target_pos.append(target_pos)
-            # batch_input_mask.append(input_mask)
-            # batch_sample_negs.append(sample_negs)
+            
 
         
         if self.mode == 'conv':
@@ -584,21 +559,7 @@ class DatasetSISSF():
                                        pad_idx=self.special_token_idx['pad'],
                                        max_len=self.response_truncate,
                                        pad_tail=True)
-        # batch_input_ids = torch.cat((batch_context_tokens, batch_response), dim=1)
-
-        # batch_current_worker_id =  padded_tensor(batch_current_worker_id,
-        #                                          pad_idx=self.special_token_idx['pad'],
-        #                                          pad_tail=True,
-        #                                          max_len=None)
-        # batch_initiator_worker_id =  padded_tensor(batch_initiator_worker_id,
-        #                                          pad_idx=self.special_token_idx['pad'],
-        #                                          pad_tail=True,
-        #                                          max_len=None)
-        
-        # batch_respondent_worker_id =  padded_tensor(batch_respondent_worker_id,
-        #                                          pad_idx=self.special_token_idx['pad'],
-        #                                          pad_tail=True,
-        #                                          max_len=None)
+       
         
         batch_context_entities_initiator =  padded_tensor(batch_context_entities_initiator,
                                                  pad_idx=-1,
@@ -631,10 +592,7 @@ class DatasetSISSF():
        
         
 
-        # input_ids = truncate(context_items,
-        #                      max_length=self.item_truncate,
-        #                      truncate_tail=False)
-
+      
         batch = {
             'worker_ids':  torch.tensor(batch_current_worker_id, dtype=torch.long ) ,
             'initiator_ids':  torch.tensor(batch_initiator_worker_id, dtype=torch.long ) ,

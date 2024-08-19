@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 # @Time   : 2020/11/22
 # @Author : Kun Zhou
@@ -7,6 +8,7 @@
 # @Time   : 2020/11/24
 # @Author : Kun Zhou
 # @Email  : francis_kun_zhou@163.com
+# @Last Modified: ggffhh3344@gmail.com 
 
 import torch
 import torch.nn as nn

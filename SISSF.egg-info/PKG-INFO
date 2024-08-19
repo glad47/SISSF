@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: SISSF
+Version: 0.0.1
+Summary: Social Information Sensitive Conversational Recommendation Using Multi-View Contrastive Learning
+Author-email: Mohammed Abdulaziz <ggffhh3344@gmail.com>
+Requires-Python: >=3.12.5
+Description-Content-Type: text/markdown

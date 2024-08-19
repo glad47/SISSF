@@ -1,3 +1,6 @@
+## Author: ggffhh3344@gmail.com Abdulaziz Ahmed
+## Date: 2024-06-11 11:15:59
+## LastEditTime: 2024-08-18 10:15:14
 import torch
 import fasttext
 import torch.nn as nn
@@ -6,10 +9,8 @@ import torch.nn.functional as F
 import pickle
 import numpy as np
 import os
-from model.UV_Encoders import UV_Encoder
-from model.UV_Aggregators import UV_Aggregator
 from model.attention import SelfAttentionBatch, SelfAttentionSeq
-from model.transformer import TransformerDecoder, TransformerEncoder
+from model.transformer import TransformerEncoder
 from tqdm import tqdm
 from util.logconf import logging
 log = logging.getLogger(__name__)
@@ -60,7 +61,7 @@ class ConversationHistoryEncoder(nn.Module):
             self.embedding = nn.Embedding(self.vocab_size, self.token_emb_dim, self.pad_token_idx)
             nn.init.normal_(self.embedding.weight, mean=0, std=self.user_emb_dim ** -0.5)
             nn.init.constant_(self.embedding.weight[self.pad_token_idx], 0)   
-            # self.load_fasttext_embeddings() 
+            self.load_fasttext_embeddings() 
 
     def load_fasttext_embeddings(self):
         path_data = self.dir_data + "/cc.en.300.bin"

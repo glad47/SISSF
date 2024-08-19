@@ -10,11 +10,11 @@ version = "0.0.1"
 find = {}  # Scan the project directory with the default parameters
 
 [project]
-name = "project"
+name = "SISSF"
 version = "0.0.1"
 authors = [
-  { name="Aziz", email="ggffhh3344@gmail.com" },
+  { name="Mohammed Abdulaziz", email="ggffhh3344@gmail.com" },
 ]
-description = "Sample project for medium article"
+description = "Social Information Sensitive Conversational Recommendation Using Multi-View Contrastive Learning"
 readme = "README.md"
-requires-python = ">=3.1"
+requires-python = ">=3.12.5"

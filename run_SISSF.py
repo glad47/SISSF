@@ -1,3 +1,7 @@
+## Author: ggffhh3344@gmail.com Abdulaziz Ahmed
+## Date: 2024-06-11 11:15:59
+## LastEditTime: 2024-08-18 10:15:14
+
 import argparse
 import datetime
 import hashlib
@@ -141,7 +145,7 @@ class SISSF:
         
         parser.add_argument('--impatience',
             help='The number of epochs with no improvement after which training will be stopped',
-            default=3,
+            default=25,
             type=int,
         )
         # '/content/drive/MyDrive/SegmentationProject/content/drive/MyDrive/project/seg_2024-02-09_10.04.25_reduceFP.300000.state'
@@ -342,6 +346,12 @@ class SISSF:
             type=int,
         )
 
+        parser.add_argument('--cumulative-prob-th',
+            help="top-p sampling (also known as nucleus sampling), cumulative probability threshold",
+            default=0.95,
+            type=float,
+        )
+
 
         parser.add_argument('--max-norm',
             help="gerd norm",
@@ -394,7 +404,6 @@ class SISSF:
         self.initDataset()
         self.sample_percent = 0.7 # 70% of the data
         self.sampler = self.get_sampler()
-        #self.initDataloaders()
         self.initModel()
 
         if self.cli_args.finetune:
@@ -487,70 +496,13 @@ class SISSF:
         self.dataset = DatasetSISSF(self.special_token_idx,self.cli_args.token_freq_th, self.cli_args.weight_th, 
                                self.cli_args.context_truncate, self.cli_args.response_truncate, self.cli_args.dataset, self.cli_args.mode)
         
-    def initDataloaders(self, train_index, test_index):
-        
-        batch_size = self.cli_args.batch_size
-        valid_batch_size = self.cli_args.valid_batch_size
-        
-        train_set, val_set = random_split(self.dataset.train_data, [len(train_index), len(test_index)])
-        if self.use_cuda:
-            batch_size *= torch.cuda.device_count()
-            valid_batch_size *= torch.cuda.device_count()
-            
-        
-        self.train_dl = DataLoader(
-            train_set,
-            batch_size=batch_size,
-            num_workers=self.cli_args.num_workers,
-            pin_memory=self.use_cuda,
-            collate_fn= self.dataset.batchify
-        )
-
-      
-
-        self.val_dl = DataLoader(
-            val_set,
-            batch_size=batch_size,
-            num_workers=self.cli_args.num_workers,
-            pin_memory=self.use_cuda,
-            collate_fn= self.dataset.batchify
-        )
+    
 
     def seed_worker(self,w_id):
         worker_seed = torch.initial_seed() % 2**32
         torch.manual_seed(worker_seed)
 
-    def initDataloadersV2(self):
-        g = torch.Generator()
-        g.manual_seed(42)
-        batch_size = self.cli_args.batch_size
-        valid_batch_size = self.cli_args.valid_batch_size
-        
-        if self.use_cuda:
-            batch_size *= torch.cuda.device_count()
-            valid_batch_size *= torch.cuda.device_count()
-            
-        
-        self.train_dl = DataLoader(
-            self.dataset.train_data,
-            batch_size=batch_size,
-            num_workers=self.cli_args.num_workers,
-            pin_memory=self.use_cuda,
-            shuffle=True,
-            worker_init_fn=self.seed_worker,
-            generator=g,
-            collate_fn= self.dataset.batchify
-        )
-        test_batch_size = self.cli_args.test_batch_size
-        if self.use_cuda :
-            test_batch_size *= torch.cuda.device_count()
-        self.test_dl = DataLoader(
-            self.dataset.test_data,
-            batch_size=test_batch_size,
-            num_workers=self.cli_args.num_workers,
-            pin_memory=self.use_cuda,
-            collate_fn= self.dataset.batchify
-        )
+    
     
     def get_sampler(self):
         dataset_size = len(self.dataset.train_data)
@@ -560,7 +512,7 @@ class SISSF:
         sample_indices = indices[:split]
         return SubsetRandomSampler(sample_indices)
 
-    def initDataloadersV1(self):
+    def initDataloaders(self):
         self.sampler = self.get_sampler()
         batch_size = self.cli_args.batch_size
         valid_batch_size = self.cli_args.valid_batch_size
@@ -600,42 +552,6 @@ class SISSF:
         )    
 
       
-    def initDataloadersV0(self):
-        batch_size = self.cli_args.batch_size
-        valid_batch_size = self.cli_args.valid_batch_size
-        test_batch_size = self.cli_args.test_batch_size
-        
-        if self.use_cuda:
-            batch_size *= torch.cuda.device_count()
-            valid_batch_size *= torch.cuda.device_count()
-            test_batch_size *= torch.cuda.device_count()
-            
-        
-        self.train_dl = DataLoader(
-            self.dataset.train_data,
-            batch_size=batch_size,
-            num_workers=self.cli_args.num_workers,
-            pin_memory=self.use_cuda,
-            collate_fn= self.dataset.batchify
-        )
-
-        self.val_dl = DataLoader(
-            self.dataset.valid_data,
-            batch_size=test_batch_size,
-            num_workers=self.cli_args.num_workers,
-            pin_memory=self.use_cuda,
-            collate_fn= self.dataset.batchify
-        )
-        
-      
-            
-        self.test_dl = DataLoader(
-            self.dataset.test_data,
-            batch_size=test_batch_size,
-            num_workers=self.cli_args.num_workers,
-            pin_memory=self.use_cuda,
-            collate_fn= self.dataset.batchify
-        )  
     
 
     def initTestDataloaders(self):
@@ -715,7 +631,7 @@ class SISSF:
                                              self.special_token_idx['start'], self.special_token_idx['pad'],self.special_token_idx['end'], 
                                              self.cli_args.response_truncate, self.dataset.decoder_token_prob_weight,embedding_weights, 
                                              self.cli_args.token_emb_dim,self.cli_args.embeddings_scale, 
-                                             self.cli_args.learn_positional_embeddings_decoder,self.cli_args.n_positions,self.device )
+                                             self.cli_args.learn_positional_embeddings_decoder,self.cli_args.n_positions, self.cli_args.cumulative_prob_th ,self.device )
         log.info("complete init model")
 
     def initOptimizer(self):
@@ -1235,119 +1151,52 @@ class SISSF:
         expected_loss = self.logMetrics(0, 'test', testMetrics_t)
         log.info("Testing expected_loss: %.4f" % (expected_loss))
 
+   
+
+
+
+    
+
+
     def main(self):
         log.info("Starting {}, {}, Mode {}".format(type(self).__name__, self.cli_args, self.cli_args.mode))
         
         
+        
         if not self.cli_args.test_mode :
             for epoch in range(self.start_epoch, self.cli_args.epochs + 1):
+                self.initDataloaders()
                 log.info("Epoch {} of {}".format(
                         epoch,
                         self.cli_args.epochs
                     ))
                 start_time = time.time()
-                
-                trainMetrics_g = torch.zeros(METRICS_SIZE, self.cli_args.kfold, device=self.device)
-                valMetrics_g = torch.zeros(METRICS_SIZE, self.cli_args.kfold, device=self.device)
-                for fold_index, (train_index, test_index) in enumerate(self.kf.split(self.dataset.train_data)):
-                    self.initDataloaders(train_index, test_index)
-                    trnMetrics_t = self.doTraining(epoch, fold_index)
-                    self.calMetrics(trnMetrics_t, fold_index,trainMetrics_g)
-                
-                    valMetrics_t = self.doValidation(epoch, fold_index)
-                    self.calMetrics(valMetrics_t,fold_index, valMetrics_g)
-                
-                
-                trainData =trainMetrics_g.to('cpu')
-                valData =valMetrics_g.to('cpu')
-                self.logMetrics(epoch, 'trn', trainData)
-                score = self.logMetrics(epoch, 'val', valData)         
-                # early stopping (no validation set in toy dataset)
-                if self.cli_args.mode == 'semantic':
-                    if  score < self.best_score:
-                        self.best_score = score
-                        self.endure_count = 0
-                        self.saveModel(epoch, True)
-                    else:
-                        self.endure_count += 1
-                        self.saveModel(epoch, False)
-                    log.info("loss: %.4f" % (score))
-                elif self.cli_args.mode == 'rec':
-                    if  score > self.best_score:
-                        self.best_score = score
-                        self.endure_count = 0
-                        self.saveModel(epoch, True)
-                    else:
-                        self.endure_count += 1
-                        self.saveModel(epoch, False)
-                    log.info("R@1: %.4f" % (score))
-
-                elif self.cli_args.mode == 'conv':
-                    if  score > self.best_score:
-                        self.best_score = score
-                        self.endure_count = 0
-                        self.saveModel(epoch, True)
-                    else:
-                        self.endure_count += 1
-                        self.saveModel(epoch, False)
-                    log.info("DIST_1: %.4f" % (score))     
-
-                end_time = time.time()  
-                epoch_duration = end_time - start_time 
-                log.info(f"Epoch {epoch} completed in {epoch_duration:.2f} seconds.")
-
-                if self.endure_count > self.cli_args.impatience  and False :
-                    log.info(f"Epoch {epoch}: early stopping.")
-                    break
-        
-        else:
-            print("already hare")
-            self.initTestDataloaders()
-            testMetrics_t = self.doTesting(0)
-            score = self.logMetrics(0, 'test', testMetrics_t)  
-
-
-
-    def mainV2(self):
-        log.info("Starting {}, {}, Mode {}".format(type(self).__name__, self.cli_args, self.cli_args.mode))
-        
-        self.initDataloadersV2()
-        if not self.cli_args.test_mode :
-            for epoch in range(self.start_epoch, self.cli_args.epochs + 1):
-                log.info("Epoch {} of {}".format(
-                        epoch,
-                        self.cli_args.epochs
-                    ))
-                start_time = time.time()
-                
-                    
-                
-                
                 trainData= self.doTraining(epoch, 0)
                 self.logMetrics(epoch, 'trn', trainData)
-                testMetrics_t = self.doTesting(0)
-                score = self.logMetrics(0, 'test', testMetrics_t)
+                valMetrics_t = self.doValidation(epoch, 0)
+                score = self.logMetrics(0, 'val', valMetrics_t)   
                 if self.cli_args.mode == 'semantic':
-                    if  score < self.best_score:
-                        self.best_score = score
-                        self.endure_count = 0
-                        self.saveModel(epoch, True)
-                    else:
-                        self.endure_count += 1
-                        self.saveModel(epoch, False)
-                    log.info("loss: %.4f" % (score))
+                    if epoch % 50 == 0:
+                        if  score < self.best_score:
+                            self.best_score = score
+                            self.endure_count = 0
+                            self.saveModel(epoch, True)
+                        else:
+                            self.endure_count += 1
+                            self.saveModel(epoch, False)
+                        log.info("loss: %.4f" % (score))
                 elif self.cli_args.mode == 'rec':
-                    if epoch % 3 == 0:
+                    if epoch % 50 == 0:
                         if  score > self.best_score:
                             self.best_score = score
                             self.endure_count = 0
-                            #self.saveModel(epoch, True)
+                            self.saveModel(epoch, True)
                         else:
                             self.endure_count += 1
-                            #self.saveModel(epoch, False)
+                            self.saveModel(epoch, False)
                     log.info("R@1: %.4f" % (score))
-
                 elif self.cli_args.mode == 'conv':
+                    if epoch % 50 == 0:
                     if  score > self.best_score:
                         self.best_score = score
                         self.endure_count = 0
@@ -1361,152 +1210,21 @@ class SISSF:
                 epoch_duration = end_time - start_time 
                 log.info(f"Epoch {epoch} completed in {epoch_duration:.2f} seconds.")
 
-                if self.endure_count > self.cli_args.impatience  and False :
+                if self.endure_count > self.cli_args.impatience :
                     log.info(f"Epoch {epoch}: early stopping.")
                     break
         
         else:
-            print("already hare")
-            self.initTestDataloaders()
-            testMetrics_t = self.doTesting(0)
-            score = self.logMetrics(0, 'test', testMetrics_t)  
-
-
-    def mainV1(self):
-        log.info("Starting {}, {}, Mode {}".format(type(self).__name__, self.cli_args, self.cli_args.mode))
-        
-        
-        
-        if not self.cli_args.test_mode :
-            for epoch in range(self.start_epoch, self.cli_args.epochs + 1):
-                self.initDataloadersV1()
-                log.info("Epoch {} of {}".format(
-                        epoch,
-                        self.cli_args.epochs
-                    ))
-                start_time = time.time()
-                trainData= self.doTraining(epoch, 0)
-                self.logMetrics(epoch, 'trn', trainData)
-                # valMetrics_t = self.doValidation(epoch, 0)
-                # score = self.logMetrics(0, 'val', valMetrics_t)
-                # testMetrics_t = self.doTesting(0)
-                # test_score = self.logMetrics(0, 'test', testMetrics_t)     
-                if self.cli_args.mode == 'semantic':
-                    self.saveModel(epoch, False)
-                    # if epoch % 50 == 0:
-                    #     if  score < self.best_score:
-                    #         self.best_score = score
-                    #         self.endure_count = 0
-                    #         self.saveModel(epoch, False)
-                    #     else:
-                    #         self.endure_count += 1
-                    #         self.saveModel(epoch, False)
-                    #     log.info("loss: %.4f" % (score))
-                elif self.cli_args.mode == 'rec':
-                    self.saveModel(epoch, False)
-                    # if epoch % 50 == 0:
-                    #     if  score > self.best_score:
-                    #         self.best_score = score
-                    #         self.endure_count = 0
-                    #         self.saveModel(epoch, False)
-                    #     else:
-                    #         self.endure_count += 1
-                    #         self.saveModel(epoch, False)
-                    # log.info("R@1: %.4f" % (score))
-                elif self.cli_args.mode == 'conv':
-                    if epoch % 40 == 0:
-                        self.saveModel(epoch, False)
-                    # if  score > self.best_score:
-                    #     self.best_score = score
-                    #     self.endure_count = 0
-                    #     # self.saveModel(epoch, False)
-                    # else:
-                    #     self.endure_count += 1
-                    #     # self.saveModel(epoch, False)
-                    # log.info("DIST_1: %.4f" % (score))    
-
-                end_time = time.time()  
-                epoch_duration = end_time - start_time 
-                log.info(f"Epoch {epoch} completed in {epoch_duration:.2f} seconds.")
-
-                if self.endure_count > self.cli_args.impatience  and False :
-                    log.info(f"Epoch {epoch}: early stopping.")
-                    break
-        
-        else:
-            print("already hare")
             self.initTestDataloaders()
             testMetrics_t = self.doTesting(0)
             score = self.logMetrics(0, 'test', testMetrics_t)     
 
 
-    def mainV0(self):
-        log.info("Starting {}, {}, Mode {}".format(type(self).__name__, self.cli_args, self.cli_args.mode))
-        
-        
-        
-        if not self.cli_args.test_mode :
-            self.initDataloadersV0()
-            for epoch in range(self.start_epoch, self.cli_args.epochs + 1):
-            
-                log.info("Epoch {} of {}".format(
-                        epoch,
-                        self.cli_args.epochs
-                    ))
-                start_time = time.time()
-                trainData= self.doTraining(epoch, 0)
-                self.logMetrics(epoch, 'trn', trainData)
-                valMetrics_t = self.doValidation(epoch, 0)
-                score = self.logMetrics(0, 'val', valMetrics_t)
-                testMetrics_t = self.doTesting(0)
-                test_score = self.logMetrics(0, 'test', testMetrics_t)        
-                if self.cli_args.mode == 'semantic':
-                    if epoch % 50 == 0:
-                        if  score < self.best_score:
-                            self.best_score = score
-                            self.endure_count = 0
-                            self.saveModel(epoch, False)
-                        else:
-                            self.endure_count += 1
-                            # self.saveModel(epoch, False)
-                    log.info("loss: %.4f" % (score))
-                elif self.cli_args.mode == 'rec':
-                  
-                   if epoch % 50 == 0:
-                        if  score > self.best_score:
-                            self.best_score = score
-                            self.endure_count = 0
-                            self.saveModel(epoch, False)
-                        else:
-                            self.endure_count += 1
-                            # self.saveModel(epoch, False)
-                elif self.cli_args.mode == 'conv':
-                   
-                    if  score > self.best_score:
-                        self.best_score = score
-                        self.endure_count = 0
-                        self.saveModel(epoch, False)
-                    else:
-                        self.endure_count += 1
-                        self.saveModel(epoch, False)
-                    log.info("DIST_2: %.4f" % (score))    
-                end_time = time.time()  
-                epoch_duration = end_time - start_time 
-                log.info(f"Epoch {epoch} completed in {epoch_duration:.2f} seconds.")
-
-                if self.endure_count > self.cli_args.impatience  and False :
-                    log.info(f"Epoch {epoch}: early stopping.")
-                    break
-        
-        else:
-            print("already hare")
-            self.initTestDataloaders()
-            testMetrics_t = self.doTesting(0)
-            score = self.logMetrics(0, 'test', testMetrics_t)                      
+                        
            
           
       
         
 
 if __name__ == '__main__':
-    SISSF().mainV1()
+    SISSF().main()

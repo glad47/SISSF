@@ -1,3 +1,6 @@
+## Author: ggffhh3344@gmail.com Abdulaziz Ahmed
+## Date: 2024-06-11 11:15:59
+## LastEditTime: 2024-08-18 10:15:14
 
 import collections
 import datetime
@@ -23,7 +26,9 @@ def padded_tensor(
         pad_tail: bool = True,
         max_len: Optional[int] = None,
 ) -> torch.LongTensor:
-    """Create a padded matrix from an uneven list of lists.
+    """
+     from https://github.com/Zyh716/WSDM2022-C2CRS
+    Create a padded matrix from an uneven list of lists.
 
     Returns padded matrix.
 
@@ -74,28 +79,11 @@ def padded_tensor(
     return output
 
 
-def get_onehot(data_list, categories) -> torch.Tensor:
-    """Transform lists of label into one-hot.
-
-    Args:
-        data_list (list of list of int): source data.
-        categories (int): #label class.
-
-    Returns:
-        torch.Tensor: one-hot labels.
-
-    """
-    onehot_labels = []
-    for label_list in data_list:
-        onehot_label = torch.zeros(categories)
-        for label in label_list:
-            onehot_label[label] = 1.0 / len(label_list)
-        onehot_labels.append(onehot_label)
-    return torch.stack(onehot_labels, dim=0)
-
 
 def add_start_end_token_idx(vec: list, start_token_idx: int = None, end_token_idx: int = None):
-    """Can choose to add start token in the beginning and end token in the end.
+    """
+    from https://github.com/Zyh716/WSDM2022-C2CRS
+    Can choose to add start token in the beginning and end token in the end.
 
     Args:
         vec: source list composed of indexes.
@@ -115,7 +103,9 @@ def add_start_end_token_idx(vec: list, start_token_idx: int = None, end_token_id
 
 
 def truncate(vec, max_length, truncate_tail=True):
-    """truncate vec to make its length no more than max length.
+    """
+     from https://github.com/Zyh716/WSDM2022-C2CRS
+    truncate vec to make its length no more than max length.
 
     Args:
         vec (list): source list.
@@ -137,7 +127,10 @@ def truncate(vec, max_length, truncate_tail=True):
 
 
 def merge_utt(conversation, split_token_idx=None, keep_split_in_tail=False, final_token_idx=None):
-    """merge utterances in one conversation.
+    
+    """
+    from https://github.com/Zyh716/WSDM2022-C2CRS
+    merge utterances in one conversation.
 
     Args:
         conversation (list of list of int): conversation consist of utterances consist of tokens.
@@ -174,6 +167,7 @@ def enumerateWithEstimate(
         iter_len=None,
 ):
     """
+     from https://github.com/deep-learning-with-pytorch/dlwpt-code
     In terms of behavior, `enumerateWithEstimate` is almost identical
     to the standard `enumerate` (the differences are things like how
     our function returns a generator, while `enumerate` returns a
@@ -277,51 +271,3 @@ def enumerateWithEstimate(
         str(datetime.datetime.now()).rsplit('.', 1)[0],
     ))
 
-#
-# try:
-#     import matplotlib
-#     matplotlib.use('agg', warn=False)
-#
-#     import matplotlib.pyplot as plt
-#     # matplotlib color maps
-#     cdict = {'red':   ((0.0,  1.0, 1.0),
-#                        # (0.5,  1.0, 1.0),
-#                        (1.0,  1.0, 1.0)),
-#
-#              'green': ((0.0,  0.0, 0.0),
-#                        (0.5,  0.0, 0.0),
-#                        (1.0,  0.5, 0.5)),
-#
-#              'blue':  ((0.0,  0.0, 0.0),
-#                        # (0.5,  0.5, 0.5),
-#                        # (0.75, 0.0, 0.0),
-#                        (1.0,  0.0, 0.0)),
-#
-#              'alpha':  ((0.0, 0.0, 0.0),
-#                        (0.75, 0.5, 0.5),
-#                        (1.0,  0.5, 0.5))}
-#
-#     plt.register_cmap(name='mask', data=cdict)
-#
-#     cdict = {'red':   ((0.0,  0.0, 0.0),
-#                        (0.25,  1.0, 1.0),
-#                        (1.0,  1.0, 1.0)),
-#
-#              'green': ((0.0,  1.0, 1.0),
-#                        (0.25,  1.0, 1.0),
-#                        (0.5, 0.0, 0.0),
-#                        (1.0,  0.0, 0.0)),
-#
-#              'blue':  ((0.0,  0.0, 0.0),
-#                        # (0.5,  0.5, 0.5),
-#                        # (0.75, 0.0, 0.0),
-#                        (1.0,  0.0, 0.0)),
-#
-#              'alpha':  ((0.0, 0.15, 0.15),
-#                        (0.5,  0.3, 0.3),
-#                        (0.8,  0.0, 0.0),
-#                        (1.0,  0.0, 0.0))}
-#
-#     plt.register_cmap(name='maskinvert', data=cdict)
-# except ImportError:
-#     pass

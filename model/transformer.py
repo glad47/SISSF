@@ -1,12 +1,7 @@
 
-# @Time   : 2020/11/22
-# @Author : Kun Zhou
-# @Email  : francis_kun_zhou@163.com
-
-# UPDATE:
-# @Time   : 2020/11/24
-# @Author : Kun Zhou
-# @Email  : francis_kun_zhou@163.com
+## Author: ggffhh3344@gmail.com Abdulaziz Ahmed
+## Date: 2024-06-11 11:15:59
+## LastEditTime: 2024-08-18 10:15:14
 
 import math
 
@@ -21,7 +16,9 @@ NEAR_INF_FP16 = 65504
 
 
 def neginf(dtype):
-    """Returns a representable finite number near -inf for a dtype."""
+    """
+     from https://github.com/Zyh716/WSDM2022-C2CRS
+    Returns a representable finite number near -inf for a dtype."""
     if dtype is torch.float16:
         return -NEAR_INF_FP16
     else:
@@ -51,6 +48,7 @@ def _create_selfattn_mask(x):
 #     out.requires_grad = False
 
 def create_position_codes(n_pos, dim, out):
+    """ from https://github.com/Zyh716/WSDM2022-C2CRS"""
     position_enc = np.array([
         [pos / np.power(10000, 2 * j / dim) for j in range(dim // 2)]
         for pos in range(n_pos)
@@ -62,7 +60,7 @@ def create_position_codes(n_pos, dim, out):
     out[:, 1::2] = torch.tensor(np.cos(position_enc)).type_as(out)
 
 def _normalize(tensor, norm_layer):
-    """Broadcast layer norm"""
+    """  from https://github.com/Zyh716/WSDM2022-C2CRS Broadcast layer norm"""
     size = tensor.size()
     return norm_layer(tensor.view(-1, size[-1])).view(size)
 
@@ -152,6 +150,9 @@ class MultiHeadAttention(nn.Module):
 
 
 class TransformerFFN(nn.Module):
+    """
+     from https://github.com/Zyh716/WSDM2022-C2CRS
+    """
     def __init__(self, dim, dim_hidden, relu_dropout=.0):
         super(TransformerFFN, self).__init__()
         self.relu_dropout = nn.Dropout(p=relu_dropout)
@@ -169,6 +170,9 @@ class TransformerFFN(nn.Module):
 
 
 class TransformerEncoderLayer(nn.Module):
+    """
+     from https://github.com/Zyh716/WSDM2022-C2CRS
+    """
     def __init__(
             self,
             n_heads,
@@ -201,6 +205,7 @@ class TransformerEncoderLayer(nn.Module):
 
 class TransformerEncoder(nn.Module):
     """
+     from https://github.com/Zyh716/WSDM2022-C2CRS
     Transformer encoder module.
 
     :param int n_heads: the number of multihead attention heads.
@@ -335,161 +340,3 @@ class TransformerEncoder(nn.Module):
             return output, mask
 
 
-class TransformerDecoderLayer(nn.Module):
-    def __init__(
-            self,
-            n_heads,
-            embedding_size,
-            ffn_size,
-            attention_dropout=0.0,
-            relu_dropout=0.0,
-            dropout=0.0,
-    ):
-        super().__init__()
-        self.dim = embedding_size
-        self.ffn_dim = ffn_size
-        self.dropout = nn.Dropout(p=dropout)
-
-        self.self_attention = MultiHeadAttention(
-            n_heads, embedding_size, dropout=attention_dropout
-        )
-        self.norm1 = nn.LayerNorm(embedding_size)
-
-        self.encoder_attention = MultiHeadAttention(
-            n_heads, embedding_size, dropout=attention_dropout
-        )
-        self.norm2 = nn.LayerNorm(embedding_size)
-
-        self.ffn = TransformerFFN(embedding_size, ffn_size, relu_dropout=relu_dropout)
-        self.norm3 = nn.LayerNorm(embedding_size)
-
-    def forward(self, x, encoder_output, encoder_mask):
-        decoder_mask = self._create_selfattn_mask(x)
-        # first self attn
-        residual = x
-        # don't peak into the future!
-        x = self.self_attention(query=x, mask=decoder_mask)
-        x = self.dropout(x)  # --dropout
-        x = x + residual
-        x = _normalize(x, self.norm1)
-
-        residual = x
-        x = self.encoder_attention(
-            query=x,
-            key=encoder_output,
-            value=encoder_output,
-            mask=encoder_mask
-        )
-        x = self.dropout(x)  # --dropout
-        x = residual + x
-        x = _normalize(x, self.norm2)
-
-        # finally the ffn
-        residual = x
-        x = self.ffn(x)
-        x = self.dropout(x)  # --dropout
-        x = residual + x
-        x = _normalize(x, self.norm3)
-
-        return x
-
-    def _create_selfattn_mask(self, x):
-        # figure out how many timestamps we need
-        bsz = x.size(0)
-        time = x.size(1)
-        # make sure that we don't look into the future
-        mask = torch.tril(x.new(time, time).fill_(1))
-        # broadcast across batch
-        mask = mask.unsqueeze(0).expand(bsz, -1, -1)
-        return mask
-
-
-class TransformerDecoder(nn.Module):
-    """
-    Transformer Decoder layer.
-
-    :param int n_heads: the number of multihead attention heads.
-    :param int n_layers: number of transformer layers.
-    :param int embedding_size: the embedding sizes. Must be a multiple of n_heads.
-    :param int ffn_size: the size of the hidden layer in the FFN
-    :param embedding: an embedding matrix for the bottom layer of the transformer.
-        If none, one is created for this encoder.
-    :param float dropout: Dropout used around embeddings and before layer
-        layer normalizations. This is used in Vaswani 2017 and works well on
-        large datasets.
-    :param float attention_dropout: Dropout performed after the multhead attention
-        softmax. This is not used in Vaswani 2017.
-    :param int padding_idx: Reserved padding index in the embeddings matrix.
-    :param bool learn_positional_embeddings: If off, sinusoidal embeddings are
-        used. If on, position embeddings are learned from scratch.
-    :param bool embeddings_scale: Scale embeddings relative to their dimensionality.
-        Found useful in fairseq.
-    :param int n_positions: Size of the position embeddings matrix.
-    """
-
-    def __init__(
-            self,
-            n_heads,
-            n_layers,
-            embedding_size,
-            ffn_size,
-            vocabulary_size,
-            embedding=None,
-            dropout=0.0,
-            attention_dropout=0.0,
-            relu_dropout=0.0,
-            embeddings_scale=True,
-            learn_positional_embeddings=False,
-            padding_idx=None,
-            n_positions=1024,
-    ):
-        super().__init__()
-        self.embedding_size = embedding_size
-        self.ffn_size = ffn_size
-        self.n_layers = n_layers
-        self.n_heads = n_heads
-        self.dim = embedding_size
-        self.embeddings_scale = embeddings_scale
-        self.dropout = nn.Dropout(p=dropout)  # --dropout
-
-        self.out_dim = embedding_size
-        assert embedding_size % n_heads == 0, \
-            'Transformer embedding size must be a multiple of n_heads'
-
-        self.embeddings = embedding
-
-        # create the positional embeddings
-        self.position_embeddings = nn.Embedding(n_positions, embedding_size)
-        if not learn_positional_embeddings:
-            create_position_codes(
-                n_positions, embedding_size, out=self.position_embeddings.weight
-            )
-        else:
-            nn.init.normal_(self.position_embeddings.weight, 0, embedding_size ** -0.5)
-
-        # build the model
-        self.layers = nn.ModuleList()
-        for _ in range(self.n_layers):
-            self.layers.append(TransformerDecoderLayer(
-                n_heads, embedding_size, ffn_size,
-                attention_dropout=attention_dropout,
-                relu_dropout=relu_dropout,
-                dropout=dropout,
-            ))
-
-    def forward(self, input, encoder_state, incr_state=None):
-        encoder_output, encoder_mask = encoder_state
-
-        seq_len = input.shape[1]
-        positions = input.new_empty(seq_len).long()
-        positions = torch.arange(seq_len, out=positions).unsqueeze(0)  # (batch, seq_len)
-        tensor = self.embeddings(input)
-        if self.embeddings_scale:
-            tensor = tensor * np.sqrt(self.dim)
-        tensor = tensor + self.position_embeddings(positions).expand_as(tensor)
-        tensor = self.dropout(tensor)  # --dropout
-
-        for layer in self.layers:
-            tensor = layer(tensor, encoder_output, encoder_mask)
-
-        return tensor, None

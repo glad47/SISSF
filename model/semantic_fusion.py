@@ -1,17 +1,16 @@
+## Author: ggffhh3344@gmail.com Abdulaziz Ahmed
+## Date: 2024-06-11 11:15:59
+## LastEditTime: 2024-08-18 10:15:14
 
 import torch
 import torch.nn as nn
-
 from torch.nn import init
 import torch.nn.functional as F
 import pickle
-from model.entitiy_relationships_graph import EntityRelationshipGraph
-from model.user_interactions_social import SocialItemGraph
-from model.user_interactions_graph import UserItemGraph
-from model.user_social_graph import UserSocialGraph
+from model.user_social_graph import SocialGraph 
 from model.conversation_history_encoder import ConversationHistoryEncoder
 from model.info_nce_loss import info_nce_loss
-from model.rec_trans import TransformerEncoder
+
 
 from util.logconf import logging
 log = logging.getLogger(__name__)
@@ -61,30 +60,12 @@ class SemanticFusion(nn.Module):
         self._build_model()
     
     def _build_model(self):
-        #self.social_graph = UserSocialGraph(self.dir_data, self.social_embed_dim, self.user_embed_dim,self.users,self.num_bases, self.device)
-        self.interaction_graph = UserItemGraph(self.dir_data, self.interaction_embed_dim, self.user_embed_dim, self.items, self.num_bases, self.device)
-        self.social_graph = SocialItemGraph(self.dir_data, self.interaction_embed_dim, self.user_embed_dim, self.items, self.num_bases, self.device)
-        # for param in self.interaction_graph.parameters():
-        #             param.requires_grad = False
+        self.social_graph = SocialGraph(self.dir_data, self.interaction_embed_dim, self.user_embed_dim, self.items, self.num_bases, self.device)
         
-        
-        #self.entity_graph = EntityRelationshipGraph(self.kg_emb_dim, self.user_embed_dim, self.n_entity,self.num_bases, self.graph_dataset, self.device )
         self.conversation_encoder = ConversationHistoryEncoder(self.token_embedding_weights, self.token_emb_dim, self.user_embed_dim,self.tok2ind,self.dir_data,
                                                                self.n_heads,self.n_layers, self.ffn_size, self.vocab_size, self.dropout, self.attention_dropout,
                                                                self.relu_dropout, self.pad_token_idx, self.start_token_idx, self.learn_positional_embeddings,
                                                                self.embeddings_scale, self.reduction, self.n_positions, self.device)
-        
-
-        # self.encoder = TransformerEncoder(
-        #             n_layers=4,
-        #             embed_dim=self.user_embed_dim,
-        #             n_heads=4,
-        #             ffn_dim=self.ffn_size,
-        #             dropout=self.sem_dropout,
-        #             att_dropout= self.attention_dropout
-        #         )
-
-        
         
         self.cross_entory_loss = nn.CrossEntropyLoss()
 
@@ -129,67 +110,31 @@ class SemanticFusion(nn.Module):
 
 
     def forward(self, batch):
-        social_embeddings, social_embeddings_initiator, social_embeddings_respondent  = self.social_graph.get_user_interaction_item_rep(batch)
-        #entity_embeddings, kg_initiator_profile , kg_respondent_profile = self.entity_graph.get_kg_project_user_profile(batch)  
-        # interaction_embeddings, interaction_embeddings_initiator, interaction_embeddings_respondent= self.interaction_graph.get_user_interaction_item_rep(batch)
-        conv_history_embeddings = self.conversation_encoder.get_project_context_rep(batch)
+        social_embeddings  = self.social_graph.get_user_social_rep(batch) # (bs, dim)
+        conv_history_embeddings = self.conversation_encoder.get_project_context_rep(batch) # (bs, dim)
 
        
-        # social_embeddings_initiator = F.dropout(social_embeddings_initiator, p=0.5, training=self.training)
-        # social_embeddings_respondent = F.dropout(social_embeddings_respondent, p=0.5, training=self.training)
-        # interaction_embeddings_initiator = F.dropout(interaction_embeddings_initiator, p=0.5, training=self.training)
-        # interaction_embeddings_respondent = F.dropout(interaction_embeddings_respondent, p=0.5, training=self.training)
+       
+
+        loss, TP, FP, FN = self.calculate_info_nce_loss(conv_history_embeddings, social_embeddings, self.tem)
 
 
-        # Concatenate embeddings
-        # combined_embeds_inti = torch.cat((interaction_embeddings, social_embeddings), dim=1)
-        # combined_embeds_inti = torch.nn.ReLU()(combined_embeds_inti).to(self.device)
-        # # Pass through the encoder
-        # encoder_output_init = self.encoder(combined_embeds_inti, None)
-
-        #print(encoder_output_init.shape)
-
-
-        # Concatenate embeddings
-        # combined_embeds_resp = torch.cat((social_embeddings_respondent, social_embeddings_initiator), dim=1)
-        # combined_embeds_resp = torch.nn.ReLU()(combined_embeds_resp).to(self.device)
-        # Pass through the encoder
-        #encoder_output_resp = self.encoder(interaction_embeddings, None)
+        
     
-        # loss_initiator_e, TP_ei, FP_ei, FN_ei = self.calculate_info_nce_loss(conv_history_embeddings, interaction_embeddings , self.tem)
-
-
-        loss_respondent_e, TP_er, FP_er, FN_er = self.calculate_info_nce_loss(conv_history_embeddings, social_embeddings, self.tem)
+        
+      
 
 
         
-        # TP = TP_ei + TP_er 
-        # FP = FP_ei + FP_er 
-        # FN = FN_ei + FN_er  
-     
-        # final_loss = ( loss_initiator_e +  loss_respondent_e) / 2.0
-        
-        TP = TP_er 
-        FP = FP_er 
-        FN = FN_er  
-     
-        final_loss = loss_respondent_e
-
-
-        # TP = TP_ei 
-        # FP = FP_ei
-        # FN = FN_ei
-     
-        # final_loss = loss_initiator_e 
-        log.info("****************************")
-        log.info(f"{TP} TP")
-        log.info(f"{FP} FP")
-        log.info(f"{(TP / (TP + FP)) * 100} precsion")
-        log.info(f"{final_loss} loss")
+        # log.info("****************************")
+        # log.info(f"{TP} TP")
+        # log.info(f"{FP} FP")
+        # log.info(f"{(TP / (TP + FP)) * 100} precsion")
+        # log.info(f"{loss} loss")
         
        
 
-        return final_loss, TP, FP, FN
+        return loss, TP, FP, FN
     
     
     
