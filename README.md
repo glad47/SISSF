@@ -1,8 +1,8 @@
 
 
-# Social Information Sensitive Conversational Recommendation Using Multi-View Contrastive Learning
-The source code for our WSDM 2022 Paper [**"Social Information Sensitive Conversational Recommendation Using Multi-View Contrastive Learning"**](https://xxxx)
-
+# Improving Social Information Sensitive Semantic Fusion Using Contrastive Learning in Conversational Recommender System
+The source code for our SISSF 2024 Paper [**"Improving Social Information Sensitive Semantic Fusion Using Contrastive Learning in Conversational Recommender System"**](https://xxxx)
+Mohammed Abdulaziz, Zhang Mingwei
 
 ## Requirements
 * loguru == 0.7.2
@@ -23,7 +23,9 @@ The source code for our WSDM 2022 Paper [**"Social Information Sensitive Convers
 * tensorboard == 2.17.0
 
 ## Overview
-This paper presents an innovative framework for constructing a social graph from existing conversational datasets, considering user-item interactions and shared interests among users. It also introduces a social information-sensitive semantic fusion approach, leveraging multi-view contrastive learning to bridge the semantic gap between the social relationships graph and conversation history. Such an approach promises to deepen the understanding of user preferences and yield more personalized recommendations.
+This paper presents an innovative framework for inducting social information from existing conversational dataset by inferring ratings and constructing user-item interactions. It also introduces a social information-sensitive semantic fusion approach, leveraging contrastive learning to bridge the semantic gap between social information and conversation history. Such an approach promises to deepen the understanding of user preferences and yield more personalized recommendations. We conduct experiments on a public dataset, and the results consistently confirm the effectiveness of our approach in both recommendations and conversational tasks.
+
+Hope it can help you!
 
 ![avatar](figure/model.png)
 
@@ -33,10 +35,10 @@ We use two datasets in our paper, all of which have been uploaded to [Google Dri
 
 The downloaded `dataset` folder should be placed in the `data` folder.
 
-in case you want to generate the dataset used for the project you can cehck `_extractProject` folder and check `README.md` file for more information. 
+in case you want to generate the dataset used for the project you can cehck `ExtractProject` folder and check `README.md` file for more information. 
 
 ### Saved Models
-We have trained our model on the dataset mentioned above, all of which have been uploaded to [Google Drive](https://drive.google.com/file/d/1-yYEllsWd-tW4ngCwu8sCNR3soR4dHIF/view?usp=sharing) and [Baidu Netdisk](https://pan.baidu.com/s/17Rj4XthmJGzxDyT1RbXHWQ) (password: 28hi).
+We have trained our model on the dataset mentioned above, all of which have been uploaded to [Google Drive](https://drive.google.com/file/d/1_RUcC3TztcTIO9_p6SYFI3fO9YTF-9d6/view?usp=sharing) and [Baidu Netdisk](https://pan.baidu.com/s/1tkWhufKpk3j077A8xAUAlQ) (password: o2lv).
 
 The downloaded `weights` folder contains weights files for different mode, `semantic_sf.state` have to be placed under `output/semantic`,
 `semantic_rec.state` have to be placed under `output/rec`, lastly the file `semantic_conv.state` have to be palced under `output/conv`
@@ -95,7 +97,7 @@ python run_SISSF.py --batch-size 300  --test-batch-size 300 --valid-batch-size 3
 for recommendation task
 
 ```
-run_SISSF.py --batch-size 300  --test-batch-size 300 --valid-batch-size 300 --lr 0.0001 --weight-decay 0.0 --sem-dropout 0.1 --tem 0.07 --mode rec --rec-layers 4 --rec-heads 4  --semantic-fusion-weights output/semantic/model_best.state
+python run_SISSF.py --batch-size 300  --test-batch-size 300 --valid-batch-size 300 --lr 0.0001 --weight-decay 0.0 --sem-dropout 0.1 --tem 0.07 --mode rec --rec-layers 4 --rec-heads 4  --semantic-fusion-weights output/semantic/model_best.state
 
 ```
 

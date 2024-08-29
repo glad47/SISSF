@@ -1,11 +1,5 @@
-'''
-Author: your name
-Date: 2024-06-13 14:35:08
-LastEditTime: 2024-08-19 12:20:02
-LastEditors: your name
-Description: In User Settings Edit
-FilePath: \SISSF\util\logFile.py
-'''
+
+
 ## Author: ggffhh3344@gmail.com Abdulaziz Ahmed
 ## Date: 2024-06-11 11:15:59
 ## LastEditTime: 2024-08-18 10:15:14

@@ -19,7 +19,8 @@ import random
 
 
 NEAR_INF_FP16 = 65504
-NEAR_INF = 1e20    
+NEAR_INF = 1e20 
+ 
 def neginf(dtype):
     """Returns a representable finite number near -inf for a dtype."""
     if dtype is torch.float16:
@@ -28,7 +29,36 @@ def neginf(dtype):
         return -NEAR_INF
 
 
+class Handle_Cross_Entropy_Loss(nn.Module):
+    """
+     from https://github.com/Zyh716/WSDM2022-C2CRS
+    """
+    def __init__(self, ignore_index=-1, weight=None):
+        super().__init__()
+        self.ignore_index = ignore_index
+        self.weight = weight
+        if ignore_index != -1 and self.weight is not None:
+            self.weight[ignore_index] = 0.0
 
+    def forward(self, output, target):
+        # (nb_sample, nb_class), (nb_sample)
+        _softmax = F.softmax(output, dim=1)
+        neg_log_softmax = -torch.log(_softmax)
+
+        nb_sample = 0
+        loss = []
+
+        for y_hat, y in zip(neg_log_softmax, target):
+            if y == self.ignore_index:
+                continue
+            nb_sample += 1
+            y_hat_c = self.weight[y] * y_hat[y] if self.weight is not None else y_hat[y]
+            loss.append(y_hat_c)
+        
+        loss = sum(loss) / nb_sample
+
+
+        return loss
     
 class ConversationalModule(nn.Module):
     def __init__(self,user_embed_dim, social_embed_dim, n_heads, ffn_dim, dropout,
@@ -91,7 +121,8 @@ class ConversationalModule(nn.Module):
         self.lin2 = nn.Linear(self.user_embed_dim, self.ffn_dim)
         self.lin3 = nn.Linear(self.user_embed_dim, self.ffn_dim)
         # loss function ignore_index=self.pad_token_id CustomLoss(self.pad_token_id)
-        self.conv_loss = nn.CrossEntropyLoss(ignore_index=self.pad_token_id)
+        # self.conv_loss = nn.CrossEntropyLoss(ignore_index=self.pad_token_id)
+        self.conv_loss = Handle_Cross_Entropy_Loss(ignore_index=self.pad_token_id, weight=self.decoder_token_prob_weight.squeeze())
         self.output_copy = nn.Linear(self.ffn_dim, self.voc_size)  # Project to the number of items
         self.copy_projection = nn.Linear(self.ffn_dim  * 2, self.ffn_dim  )
         self.output_projection_social = nn.Linear(self.ffn_dim, self.ffn_dim ) 

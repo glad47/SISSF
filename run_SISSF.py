@@ -111,12 +111,12 @@ class SISSF:
         )
         parser.add_argument('--mode',
             help="semantic -> semantic fusion, rec -> recommendation model, conv -> conversational model",
-            default="conv",
+            default="semantic",
         )
         parser.add_argument('--test-mode',
             help="Test mode",
             default=False,
-        )
+        ) 
         parser.add_argument('--lr',
             help="The learning rate",
             default=1e-3,
@@ -677,16 +677,7 @@ class SISSF:
             logger.info(f"********trn******{batch_ndx}******{fold_num}********")
             loss_var = self.computeBatchLoss(batch_ndx, batch_tup, self.train_dl.batch_size, trnMetrics_g)
             loss_var.backward()
-            #total_norm = 0
-            #parameters = [p for p in self.model.parameters() if p.grad is not None]
-
-            # for p in parameters:
-            #     param_norm = p.grad.data.norm(2)
-            #     total_norm += param_norm.item() ** 2
-
-            # total_norm = total_norm ** (1. / 2)
-            # # log.info(f"Total gradient norm: {total_norm}")
-            # torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=self.cli_args.max_norm)
+           
             self.optimizer.step()
        
             
@@ -1197,13 +1188,13 @@ class SISSF:
                     log.info("R@1: %.4f" % (score))
                 elif self.cli_args.mode == 'conv':
                     if epoch % 50 == 0:
-                    if  score > self.best_score:
-                        self.best_score = score
-                        self.endure_count = 0
-                        self.saveModel(epoch, True)
-                    else:
-                        self.endure_count += 1
-                        self.saveModel(epoch, False)
+                        if  score > self.best_score:
+                            self.best_score = score
+                            self.endure_count = 0
+                            self.saveModel(epoch, True)
+                        else:
+                            self.endure_count += 1
+                            self.saveModel(epoch, False)
                     log.info("DIST_1: %.4f" % (score))    
 
                 end_time = time.time()  

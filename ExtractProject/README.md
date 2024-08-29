@@ -1,14 +1,7 @@
-<!--
- * @Author: ggffhh3344@gmail.com Abdulaziz ahmed 
- * @Date: 2024-08-18 14:07:03
- * @LastEditTime: 2024-08-19 23:44:45
--->
 
 
-
-## Social Information Sensitive Conversational Recommendation Using Multi-View Contrastive Learning
-This is my implementation to preprocess the dataset of the paper:
-
+# Improving Social Information Sensitive Semantic Fusion Using Contrastive Learning in Conversational Recommender System
+This is my implementation to preprocess the dataset of the paper SISSF 2024 Paper [**"Improving Social Information Sensitive Semantic Fusion Using Contrastive Learning in Conversational Recommender System"**](https://xxxx)
 Mohammed Abdulaziz, Zhang Mingwei
 
 

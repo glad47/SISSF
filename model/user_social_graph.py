@@ -178,3 +178,9 @@ class SocialGraph(nn.Module):
         return user_interaction_item_user_profile # (bs, user_dim)
     
 
+    def getItemEmbeddings(self):
+        social_embeddings = self.social_encoder(None, self.edge_idx, self.edge_type) # (bs, all_ns_item + all_ns_user)
+        return social_embeddings[self.num_users:self.num_items + self.num_users]
+
+
+

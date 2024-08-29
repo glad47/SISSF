@@ -1,14 +1,8 @@
 
-# -*- coding: utf-8 -*-
-# @Time   : 2020/11/22
-# @Author : Kun Zhou
-# @Email  : francis_kun_zhou@163.com
 
-# UPDATE:
-# @Time   : 2020/11/24
-# @Author : Kun Zhou
-# @Email  : francis_kun_zhou@163.com
-# @Last Modified: ggffhh3344@gmail.com 
+## Author: ggffhh3344@gmail.com Abdulaziz Ahmed
+## Date: 2024-06-11 11:15:59
+## LastEditTime: 2024-08-18 10:15:14
 
 import torch
 import torch.nn as nn
@@ -16,6 +10,9 @@ import torch.nn.functional as F
 
 
 class SelfAttentionBatch(nn.Module):
+    """
+     from https://github.com/Zyh716/WSDM2022-C2CRS
+    """
     def __init__(self, dim, da, alpha=0.2, dropout=0.5):
         super(SelfAttentionBatch, self).__init__()
         self.dim = dim
@@ -38,6 +35,9 @@ class SelfAttentionBatch(nn.Module):
 
 
 class SelfAttentionSeq(nn.Module):
+    """
+     from https://github.com/Zyh716/WSDM2022-C2CRS
+    """
     def __init__(self, dim, da, alpha=0.2, dropout=0.5):
         super(SelfAttentionSeq, self).__init__()
         self.dim = dim
@@ -71,6 +71,9 @@ class SelfAttentionSeq(nn.Module):
 
 
 class Attention(nn.Module):
+    """
+     from https://github.com/Zyh716/WSDM2022-C2CRS
+    """
     def __init__(self, embedding_dims):
         super(Attention, self).__init__()
         self.embed_dim = embedding_dims
