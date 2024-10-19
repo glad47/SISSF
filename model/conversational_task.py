@@ -334,11 +334,11 @@ class ConversationalModule(nn.Module):
         else:
             loss, preds = self.nucleus_sampling(response,encoder_output, mask,conv_history_embeddings, social_information,social_reps,user_model) # (1), (bs, seq_len)               
         dist_2, dist_3, dist_4 = self.metrics_cal_conv(preds)
-        log.info("****************************")
-        log.info(f"{dist_2} dist-2")
-        log.info(f"{dist_3} dist-3")
-        log.info(f"{dist_4} dist-4")
-        log.info(f"{loss} conv_loss")
+        # log.info("****************************")
+        # log.info(f"{dist_2} dist-2")
+        # log.info(f"{dist_3} dist-3")
+        # log.info(f"{dist_4} dist-4")
+        # log.info(f"{loss} conv_loss")
         return loss, dist_2, dist_3, dist_4
     
 

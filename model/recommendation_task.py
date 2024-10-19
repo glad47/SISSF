@@ -79,11 +79,11 @@ class RecommenderModule(nn.Module):
         rec_loss = self.rec_loss(rec_scores, y)        
         r_at_1, r_at_10, r_at_50 = self.metrics_cal_rec(rec_scores, y)
 
-        log.info("****************************")
-        log.info(f"{r_at_1} R@1")
-        log.info(f"{r_at_10} R@10")
-        log.info(f"{r_at_50} R@50")
-        log.info(f"{rec_loss} rec_loss")
+        # log.info("****************************")
+        # log.info(f"{r_at_1} R@1")
+        # log.info(f"{r_at_10} R@10")
+        # log.info(f"{r_at_50} R@50")
+        # log.info(f"{rec_loss} rec_loss")
        
         
 

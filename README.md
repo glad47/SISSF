@@ -31,14 +31,14 @@ Hope it can help you!
 
 ## Datasets and Other Resource
 ### Datasets
-We use two datasets in our paper [ReDial dataset](https://papers.nips.cc/paper/2018/file/800de15c79c8d840f4e78d3af937d4d4-Paper.pdf) and [INSPIRED dataset](https://aclanthology.org/2020.emnlp-main.654.pdf), all of which have been uploaded to [Google Drive](https://drive.google.com/file/d/1ib2OgXxOKaMsh2d88Y7wZm3xfAIjXSBD/view?usp=sharing) and [Baidu Netdisk](https://pan.baidu.com/s/1Z7aTpD2tZVY0zf9PWxPwoA) (password: v1nq).
+We use two datasets in our paper [ReDial dataset](https://papers.nips.cc/paper/2018/file/800de15c79c8d840f4e78d3af937d4d4-Paper.pdf) and [INSPIRED dataset](https://aclanthology.org/2020.emnlp-main.654.pdf), all of which have been uploaded to [Google Drive](https://drive.google.com/file/d/11yUFFz8iI5hYZxFjlOnLQpqjt0T8J18x/view?usp=sharing) and [Baidu Netdisk](https://pan.baidu.com/s/1zrV5SbAt5X-C1SLkja3sqQ) (password: zmfm).
 
 The downloaded `dataset` folder should be placed in the `data` folder.
 
 in case you want to generate the datasets used for the project you can check `ExtractProject` folder and check `README.md` file for more information. 
 
 ### Saved Models
-We have trained our model on the datasets mentioned above, all of which have been uploaded to [Google Drive](https://drive.google.com/file/d/13fZi3VYzQt_eY0sEQfCeAVrqiJgF7fLR/view?usp=sharing) and [Baidu Netdisk](https://pan.baidu.com/s/1lywQyDRG9WETxoPGLYKBCA) (password: msaq).
+We have trained our model on the datasets mentioned above, all of which have been uploaded to [Google Drive](https://drive.google.com/file/d/1fY-4i5MxnZxb31bDlRA8dcGp-RYkDC8n/view?usp=sharing) and [Baidu Netdisk](https://pan.baidu.com/s/11_LATzJsnvGo6oFgSQ5beg) (password: fhro).
 
 The downloaded `weights` folder contains weights files for different mode, and then move its content to the `output` folder.
 
@@ -135,7 +135,7 @@ And thanks the code from [dlwpt-code](https://github.com/deep-learning-with-pyto
 Any scientific publications that use our codes and datasets should cite the following paper as the reference:
 ```
 @inproceedings{10.1145/3488560.3498514,
-title = {Social Information Sensitive Conversational Recommendation Using Multi-View Contrastive Learning},
+title = {Improving Social Information Sensitive Semantic Fusion Using Contrastive Learning in Conversational Recommender System},
 author = {Mohammed Abdulaziz, Zhang Mingwei, Wang Ruizhe},
 booktitle = {WSDM},
 year = {2024},

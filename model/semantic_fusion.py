@@ -126,11 +126,11 @@ class SemanticFusion(nn.Module):
 
 
         
-        log.info("****************************")
-        log.info(f"{TP} TP")
-        log.info(f"{FP} FP")
-        log.info(f"{(TP / (TP + FP)) * 100} precsion")
-        log.info(f"{loss} loss")
+        # log.info("****************************")
+        # log.info(f"{TP} TP")
+        # log.info(f"{FP} FP")
+        # log.info(f"{(TP / (TP + FP)) * 100} precsion")
+        # log.info(f"{loss} loss")
         
        
 
