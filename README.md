@@ -23,7 +23,7 @@ Mohammed Abdulaziz, Zhang Mingwei, and Wang Ruizhe
 * tensorboard == 2.17.0
 
 ## Overview
-This paper presents an innovative framework for inducting social information from existing conversational dataset by inferring ratings and constructing user-item interactions. It also introduces a social information-sensitive semantic fusion approach, leveraging contrastive learning to bridge the semantic gap between social information and conversation history. Such an approach promises to deepen the understanding of user preferences and yield more personalized recommendations. We conduct experiments on two public datasets, and the results consistently confirm the effectiveness of our approach in both recommendation and conversational tasks.
+This paper presents an innovative framework for inducting social information from existing conversational dataset by inferring ratings and constructing user-item interaction and user-user relationship graphs. It also introduces a social information-sensitive semantic fusion approach, leveraging contrastive learning to bridge the semantic gap between social information and conversation history. Such an approach promises to deepen the understanding of user preferences and yield more personalized recommendations. We conduct experiments on two public datasets, and the results consistently confirm the effectiveness of our approach in both recommendation and conversational tasks.
 
 Hope it can help you!
 
