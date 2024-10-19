@@ -2,7 +2,7 @@
 
 # Improving Social Information Sensitive Semantic Fusion Using Contrastive Learning in Conversational Recommender System
 The source code for our SISSF 2024 Paper [**"Improving Social Information Sensitive Semantic Fusion Using Contrastive Learning in Conversational Recommender System"**](https://xxxx)
-Mohammed Abdulaziz, Zhang Mingwei, Wang Ruizhe
+Mohammed Abdulaziz, Zhang Mingwei, and Wang Ruizhe
 
 ## Requirements
 * loguru == 0.7.2
