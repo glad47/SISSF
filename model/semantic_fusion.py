@@ -7,7 +7,7 @@ import torch.nn as nn
 from torch.nn import init
 import torch.nn.functional as F
 import pickle
-from model.user_social_graph import SocialGraph 
+from model.social_information import SocialInformation 
 from model.conversation_history_encoder import ConversationHistoryEncoder
 from model.info_nce_loss import info_nce_loss
 
@@ -20,7 +20,7 @@ log.setLevel(logging.DEBUG)
 
 class SemanticFusion(nn.Module):
 
-    def __init__(self, dir_data, social_embed_dim, interaction_embed_dim, user_embed_dim, users, items, 
+    def __init__(self, dir_data, dtype, social_embed_dim, interaction_embed_dim, user_embed_dim, users, items, 
                  kg_emb_dim, n_entity, num_bases, graph_dataset,
                  token_embedding_weights, token_emb_dim, n_heads, n_layers, ffn_size, vocab_size,tok2ind, dropout, attention_dropout, 
                  relu_dropout, pad_token_idx, start_token_idx, learn_positional_embeddings, embeddings_scale, reduction, n_positions,
@@ -28,6 +28,7 @@ class SemanticFusion(nn.Module):
         super(SemanticFusion, self).__init__()
 
         self.dir_data = dir_data
+        self.dtype = dtype
         self.social_embed_dim = social_embed_dim
         self.interaction_embed_dim = interaction_embed_dim
         self.user_embed_dim = user_embed_dim
@@ -60,10 +61,9 @@ class SemanticFusion(nn.Module):
         self._build_model()
     
     def _build_model(self):
-        self.social_graph = SocialGraph(self.dir_data, self.interaction_embed_dim, self.user_embed_dim, self.items, self.num_bases, self.device)
+        self.social_info = SocialInformation(self.dir_data,self.dtype, self.interaction_embed_dim, self.user_embed_dim, self.items, self.num_bases, self.device)
         
-        self.conversation_encoder = ConversationHistoryEncoder(self.token_embedding_weights, self.token_emb_dim, self.user_embed_dim,self.tok2ind,self.dir_data,
-                                                               self.n_heads,self.n_layers, self.ffn_size, self.vocab_size, self.dropout, self.attention_dropout,
+        self.conversation_encoder = ConversationHistoryEncoder(self.token_embedding_weights, self.token_emb_dim, self.user_embed_dim,self.tok2ind,self.dir_data,self.n_heads,self.n_layers, self.ffn_size, self.vocab_size, self.dropout, self.attention_dropout,
                                                                self.relu_dropout, self.pad_token_idx, self.start_token_idx, self.learn_positional_embeddings,
                                                                self.embeddings_scale, self.reduction, self.n_positions, self.device)
         
@@ -110,13 +110,13 @@ class SemanticFusion(nn.Module):
 
 
     def forward(self, batch):
-        social_embeddings  = self.social_graph.get_user_social_rep(batch) # (bs, dim)
+        social_information  = self.social_info.get_social_information_rep(batch) # (bs, dim)
         conv_history_embeddings = self.conversation_encoder.get_project_context_rep(batch) # (bs, dim)
 
        
        
 
-        loss, TP, FP, FN = self.calculate_info_nce_loss(conv_history_embeddings, social_embeddings, self.tem)
+        loss, TP, FP, FN = self.calculate_info_nce_loss(conv_history_embeddings, social_information, self.tem)
 
 
         
@@ -126,11 +126,11 @@ class SemanticFusion(nn.Module):
 
 
         
-        # log.info("****************************")
-        # log.info(f"{TP} TP")
-        # log.info(f"{FP} FP")
-        # log.info(f"{(TP / (TP + FP)) * 100} precsion")
-        # log.info(f"{loss} loss")
+        log.info("****************************")
+        log.info(f"{TP} TP")
+        log.info(f"{FP} FP")
+        log.info(f"{(TP / (TP + FP)) * 100} precsion")
+        log.info(f"{loss} loss")
         
        
 

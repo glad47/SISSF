@@ -16,12 +16,12 @@ import random
 from data.SingleDataset import SingleDataset
 from sklearn.model_selection import train_test_split
 
-
+import itertools
 
 class DatasetSISSF():
     
 
-    def __init__(self, special_token_idx, token_freq_th, weight_th, context_truncate,response_truncate, dpath , mode):
+    def __init__(self, special_token_idx, token_freq_th, weight_th, context_truncate,response_truncate, dpath, dtype , mode):
         """
 
        special_token_idx: {
@@ -41,6 +41,7 @@ class DatasetSISSF():
         self.token_freq_th = token_freq_th
         self.weight_th = weight_th
         self.dpath = dpath
+        self.dtype = dtype 
         self.mode = mode
         self.context_truncate = context_truncate
         # self.item_truncate = item_truncate
@@ -54,36 +55,33 @@ class DatasetSISSF():
     
     def load_data(self):
         # load train/valid/test data
-        with open(os.path.join(self.dpath, 'train_data.json'), 'r', encoding='utf-8') as f:
+        print(f"Dataset: {self.dtype}")
+        
+        with open(os.path.join(self.dpath,self.dtype, 'train_data.json'), 'r', encoding='utf-8') as f:
             self.train_data = json.load(f)
 
-        with open(os.path.join(self.dpath, 'valid_data.json'), 'r', encoding='utf-8') as f:
+        with open(os.path.join(self.dpath,self.dtype, 'valid_data.json'), 'r', encoding='utf-8') as f:
             self.valid_data = json.load(f)
-        with open(os.path.join(self.dpath, 'test_data.json'), 'r', encoding='utf-8') as f:
+        with open(os.path.join(self.dpath,self.dtype, 'test_data.json'), 'r', encoding='utf-8') as f:
             self.test_data = json.load(f)
         
-        with open(os.path.join(self.dpath, 'movie_ids.json'), 'r', encoding='utf-8') as f:
-            self.movie_ids = json.load(f)
-        self.tok2ind = json.load(open(os.path.join(self.dpath, 'token2id.json'), 'r', encoding='utf-8'))
+        self.tok2ind = json.load(open(os.path.join(self.dpath, self.dtype,'token2id.json'), 'r', encoding='utf-8'))
         self.ind2tok = {idx: word for word, idx in self.tok2ind.items()}    
-        self.entity2id = json.load( open(os.path.join(self.dpath, 'entity2id.json'), 'r', encoding='utf-8'))
-        self.id2entity = {idx: entity for entity, idx in self.entity2id.items()}
-        self.n_entity = max(self.entity2id.values()) + 1
-        path_data = self.dpath + "/redial_interactions.pickle"
+        if self.dtype == 'ReDial':
+            path_data = self.dpath + "/" +  self.dtype + "/redial_interactions.pickle"
+        else :
+            path_data = self.dpath + "/" +  self.dtype + "/inspired_interactions.pickle"    
         data_file = open(path_data, 'rb')
-        self.history_u_lists, self.history_ur_lists, self.history_v_lists, self.history_vr_lists,self.train_u,self.train_v, self.train_r, self.test_u, self.test_v, self.test_r, self.social_adj_lists, self.ratings_list = pickle.load(data_file)
+        self.history_u_lists, self.history_ur_lists, self.history_v_lists, self.history_vr_lists,self.train_u,self.train_v, self.train_r, self.test_u, self.test_v, self.test_r, self.social_adj_lists, self.social_adj_ratings, self.ratings_list = pickle.load(data_file)
 
         
-        
-        self.redial_context_movie_id2crslab_entityId = json.load(open(os.path.join(self.dpath, 'redial_context_movie_id2crslab_entityId.json')))
-        self.movie2entityid= {idx: entity for entity, idx in self.redial_context_movie_id2crslab_entityId.items()}
-        conv_tokID2freq = dict(json.load(open(os.path.join(self.dpath, 'token_freq.json'))))
+        conv_tokID2freq = dict(json.load(open(os.path.join(self.dpath, self.dtype, 'token_freq.json'))))
         self.decoder_token_prob_weight = self.get_decoder_decoder_token_prob_weight(conv_tokID2freq)
         self.user_mapping = {}
         self.item_mapping = {}
         self.users = []
         self.items = []
-        with open(os.path.join(self.dpath, 'user_list.txt')) as f:
+        with open(os.path.join(self.dpath, self.dtype, 'user_list.txt')) as f:
             check = False
             for l in f.readlines():
                 if check :
@@ -96,7 +94,7 @@ class DatasetSISSF():
                 else : 
                     check = True         
 
-        with open(os.path.join(self.dpath, 'item_list.txt')) as f:
+        with open(os.path.join(self.dpath,self.dtype, 'item_list.txt')) as f:
             check = False
             for l in f.readlines():
                 if check :
@@ -116,10 +114,7 @@ class DatasetSISSF():
         self.vocab = {
             'tok2ind': self.tok2ind,
             'ind2tok': self.ind2tok,
-            'entity2id': self.entity2id,
-            'id2entity': self.id2entity,
             'vocab_size': len(self.tok2ind),
-            'n_entity': self.n_entity,
             'n_user' : self.n_users,
             'n_items' : self.n_items,
             'user_mapping' : self.user_mapping,
@@ -152,12 +147,9 @@ class DatasetSISSF():
     def data_preprocess(self):
         
         
-
-        # self.train_data = self.valid_data
-        # self.test_data = self.valid_data
         self.train_data =SingleDataset(self._raw_data_process( self.train_data , "Processing Train Dataset"))
-        self.valid_data = SingleDataset(self._raw_data_process( self.valid_data , "Processing Valid Dataset"))
-        self.test_data = SingleDataset(self._raw_data_process( self.test_data , "Processing Test Dataset")) 
+        self.valid_data = SingleDataset(self._raw_data_process_test( self.valid_data , "Processing Valid Dataset"))
+        self.test_data = SingleDataset(self._raw_data_process_test( self.test_data , "Processing Test Dataset")) 
     
 
        
@@ -167,10 +159,20 @@ class DatasetSISSF():
     def _raw_data_process(self, raw_data, mode):
         logger.info(mode)
         augmented_conv = self.merge_conv_data_add_entities_mask(raw_data)
+        augmented_conv = self.add_item_context(augmented_conv)
+        # augmented_conv = self.augment_item_context(augmented_conv)
         augmented_conv = self.augment_and_add_add_entities_mask(augmented_conv)
         augmented_conv = self.seperate_rec_items(augmented_conv)
         # augmented_conv = self.augment_nlp_context(augmented_conv)
         return augmented_conv
+
+    def _raw_data_process_test(self, raw_data, mode):
+        logger.info(mode)
+        augmented_conv = self.merge_conv_data_add_entities_mask(raw_data)
+        augmented_conv = self.add_item_context(augmented_conv)
+        augmented_conv = self.augment_and_add_add_entities_mask(augmented_conv)
+        augmented_conv = self.seperate_rec_items(augmented_conv)
+        return augmented_conv    
     
     def _raw_data_process_no_shfting(self, raw_data, mode):
         logger.info(mode)
@@ -201,19 +203,18 @@ class DatasetSISSF():
         for conversation in tqdm(conversations):
             augmented_messages = []
             last_user = None
-            itemsALl = set()
-            
+          
             for utt in conversation['messages']:
                 text_token_ids = [self.tok2ind.get(word, self.unk_token_idx) for word in utt["text"]]
                 rec_item_ids = [item for item in utt['rec_items']]
-                item_ids = [item for item in utt['items']]
+                items = [item for item in utt['items'] if item not in rec_item_ids]
                 entity_ids = [entity for entity in utt['entities']]
                 item_ids_in_context, items_mask_in_context, item_masks_in_context = self.get_items_info_in_context_text(utt, text_token_ids)
-                itemsALl.update(item_ids)
+           
                 if utt["senderWorkerId"] == last_user:
                     augmented_messages[-1]["text"] += text_token_ids # [utter_len]
-                    augmented_messages[-1]["items"] = list(itemsALl)
-                    augmented_messages[-1]["rec_items"] +=  rec_item_ids,
+                    augmented_messages[-1]["rec_items"].extend(rec_item_ids),
+                    augmented_messages[-1]["items"].extend(items),
                     augmented_messages[-1]["entities"] += entity_ids
                     augmented_messages[-1]["items_mask_in_context"] += items_mask_in_context # [utter_len]
                     augmented_messages[-1]["item_masks_in_context"] += item_masks_in_context # [n_items_in_utter_text, utter_len]
@@ -222,7 +223,7 @@ class DatasetSISSF():
                     augmented_messages.append({
                         "senderWorkerId": utt["senderWorkerId"],
                         "text":  text_token_ids, # [utter_len][int(self.tok2ind[id])] + text_token_ids
-                        "items": list(itemsALl),
+                        "items": items,
                         "rec_items": rec_item_ids,
                         "entities": entity_ids,
                         'items_mask_in_context': items_mask_in_context, # [utter_len]
@@ -233,11 +234,91 @@ class DatasetSISSF():
                    
 
                 last_user = utt["senderWorkerId"]
+               
             conversation['messages']= augmented_messages  
             itemsALl = set() 
         
 
         return conversations
+
+    def add_item_context(self, conversations, reduce=False):
+        logger.info("Items Cotext Conversations")
+        if reduce:
+            # Calculate 30% of the length of the list
+            thirty_percent = int(len(conversations) * 0.05)
+
+            # Take the first 30% of the list
+            conversations = conversations[:thirty_percent]  
+        for conversation in tqdm(conversations):
+            augmented_messages = []
+            context_item= set()
+            for utt in conversation['messages']:
+                rec_item_ids =  utt['rec_items']
+                
+    
+               
+                augmented_messages.append({
+                    "senderWorkerId": utt["senderWorkerId"],
+                    "text":  utt["text"], # [utter_len][int(self.tok2ind[id])] + text_token_ids
+                    "items": list(context_item),
+                    "rec_items": rec_item_ids,
+                    "entities": utt["entities"],
+                    'items_mask_in_context': utt["items_mask_in_context"], # [utter_len]
+                    'item_masks_in_context': utt["item_masks_in_context"], # [n_items_in_utter_text, utter_len]
+                    'item_ids_in_context': utt["item_ids_in_context"], # [n_items_in_utter_text]
+                })
+                    
+                   
+
+                context_item.update(rec_item_ids)
+            conversation['messages']= augmented_messages  
+           
+        
+
+        return conversations   
+    
+    def augment_item_context(self, conversations): 
+        allConv = [] 
+        for conversation in tqdm(conversations):
+            augmented_messages = []
+            conver = {}
+            context_item= set()
+            for index, utt in enumerate(conversation['messages']):
+                items =  utt['items']
+                if len(items) > 1:
+                    all_combinations = []
+                    for r in range(1, len(items) + 1):
+                        if random.random() < 0.1:  # 1% chance
+                            combinations = itertools.combinations(items, r)
+                            all_combinations.extend(combinations)
+                        else:
+                            continue
+                            
+
+                    # Print all combinations
+                    for order, combo in enumerate(all_combinations):
+                        # print(combo)
+                        uttx = deepcopy(utt)
+                        uttx['items'] = list(combo)
+                        if order == 0:
+                            conver[index] = [uttx]
+                        else:
+                            conver[index].append(uttx)     
+                        # augmented_messages.append(conversation)
+                       
+                augmented_messages.append(utt)          
+            conversation['messages']= augmented_messages  
+            allConv.append(conversation)
+            for index,conPair in conver.items():
+                for item in conPair:
+                    newConv = deepcopy(conversation)
+                    newConv['messages'][index] = item
+                    allConv.append(newConv)
+                    
+
+
+
+        return  allConv     
     
     def seperate_rec_items(self, dataset):
         logger.info("Augment Conversations Seperate Recommended Items")
@@ -281,8 +362,7 @@ class DatasetSISSF():
         try:
             if word.startswith('@') and word[1:].isdigit():
                 ID = word[1:]
-                if ID in self.redial_context_movie_id2crslab_entityId:
-                    return True
+                return True
         except Exception as e:
         # Handle any exceptions (e.g., invalid input, unexpected data)
             return False
@@ -344,7 +424,7 @@ class DatasetSISSF():
                             item_set_respondent.add(item)
                             context_items_respondent.append(item)   
 
-                context_tokens.append(text_tokens)  # [n_utter, utter_len]
+                context_tokens.append(text_tokens)  # [n_utter, utter_len]   
                 items_mask_in_contexts.append(items_mask_in_context)  # [n_utter, utter_len]
                 # entity_masks_in_context = [n_entities_in_utter_text, utter_len]
                 padded_entity_masks_in_context = self.padd_entity_masks_in_context(pad_utters, item_masks_in_context) # [n_entities_in_utter_text, n_utter, utter_len]
@@ -457,6 +537,7 @@ class DatasetSISSF():
         batch_items_mask_in_context = []
         batch_item_masks_in_context = []
         batch_item_ids_in_context =[]
+     
 
         for conv_dict in batch:
             if self.mode == 'conv':
@@ -478,6 +559,7 @@ class DatasetSISSF():
             batch_item_masks_in_context.append(self.build_sample_item_mask_in_context(conv_dict['item_masks_in_context']))
             batch_item_ids_in_context.extend(conv_dict['item_ids_in_context'])
             batch_item_id.append(conv_dict['items'])
+            
             
 
         
@@ -523,6 +605,8 @@ class DatasetSISSF():
                                                 pad_tail=True,
                                                 max_len=None)
         
+      
+        
         
         
        
@@ -541,11 +625,11 @@ class DatasetSISSF():
             'context_entities_respondent_ids': batch_context_entities_respondent, 
             'context_items_initiator_ids' : batch_context_items_initiator,
             'context_items_respondent_ids' : batch_context_items_respondent,
-            'context_items_ids' : batch_context_items,
+            'context_items_ids' : batch_context_items ,
             'items_mask_in_context' : torch.tensor(batch_items_mask_in_context, dtype=torch.long ),
             'item_masks_in_context' : batch_item_masks_in_context, 
             'item_ids_in_context' : torch.tensor(batch_item_ids_in_context, dtype=torch.long ),
-            'movie_to_rec': torch.tensor(batch_item_id, dtype=torch.long ) 
+            'movie_to_rec': torch.tensor(batch_item_id, dtype=torch.long )
         }
 
       

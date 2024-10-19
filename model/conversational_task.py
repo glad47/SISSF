@@ -61,10 +61,12 @@ class Handle_Cross_Entropy_Loss(nn.Module):
         return loss
     
 class ConversationalModule(nn.Module):
-    def __init__(self,user_embed_dim, social_embed_dim, n_heads, ffn_dim, dropout,
+    def __init__(self,dpath, dtype, user_embed_dim, social_embed_dim, n_heads, ffn_dim, dropout,
                      attention_dropout,relu_dropout, n_layers, voc_size, start_token_id,pad_token_id,end_token_id, response_truncate, 
                      decoder_token_prob_weight,embedding,embedding_size, embeddings_scale, learn_positional_embeddings, n_positions, cumulative_prob_th, device ):
         super().__init__()
+        self.dpath = dpath
+        self.dtype = dtype
         self.user_embed_dim = user_embed_dim
         self.social_embed_dim = social_embed_dim
       
@@ -85,7 +87,7 @@ class ConversationalModule(nn.Module):
         self.embeddings_scale= embeddings_scale
         self.learn_positional_embeddings = learn_positional_embeddings
         self.n_positions = n_positions
-        self.tok2ind = json.load(open(os.path.join('data/dataset', 'token2id.json'), 'r', encoding='utf-8'))
+        self.tok2ind = json.load(open(os.path.join(self.dpath,self.dtype, 'token2id.json'), 'r', encoding='utf-8'))
         self.ind2tok = {idx: word for word, idx in self.tok2ind.items()} 
         self.cumulative_prob_th = cumulative_prob_th   
 
@@ -236,7 +238,7 @@ class ConversationalModule(nn.Module):
         return loss, preds  # (bs, response_truncate)
     
 
-    def greedy_selection_v1(self, response,encoder_output, encoder_mask,conv_history_embeddings, social_embeddings, social_reps, user_model):
+    def nucleus_sampling(self, response,encoder_output, encoder_mask,conv_history_embeddings, social_embeddings, social_reps, user_model):
         batch_size = response.shape[0]
         inputs = self.START.detach().expand(batch_size, 1).long().to(self.device) # (bs, 1)
         inputs = inputs.to(self.device)
@@ -319,24 +321,24 @@ class ConversationalModule(nn.Module):
         response = batch['response'] # (bs, seq_len)
         mask = batch['context_mask'] # (bs, context_length)
         mask = mask.to(self.device)  # (bs, context_length)
-       
-        social_embeddings, social_reps  = user_model.social_graph.get_social_rep_recommendation(batch)  # (bs, user_dim), (bs, ns_social,user_dim)
+        social_information  = user_model.social_info.get_social_information_rep(batch) # (bs, dim)
+        _, _ , social_reps  = user_model.social_info.get_social_rep_recommendation(batch)  # (bs, user_dim), (bs, user_dim), (bs, ns_social,user_dim)
         encoder_output = user_model.conversation_encoder.get_encoder_rep(batch).to(self.device)   # (bs, context_length, dim)
         conv_history_embeddings = user_model.conversation_encoder.get_project_context_rep(batch)  # (bs, user_dim)
         conv_history_embeddings = self.lin1(conv_history_embeddings).to(self.device)              # (bs, dim)
-        social_embeddings = self.lin2(social_embeddings).to(self.device)                          # (bs, dim)
+        social_information = self.lin2(social_information).to(self.device)                          # (bs, dim)
         social_reps = self.lin3(social_reps).to(self.device)                                      # (bs, ns_social, dim)
         
         if self.training:
-            loss, preds = self.force_teaching(response,encoder_output, mask,conv_history_embeddings, social_embeddings,social_reps, user_model)    # (1), (bs, seq_len)     
+            loss, preds = self.force_teaching(response,encoder_output, mask,conv_history_embeddings, social_information,social_reps, user_model)    # (1), (bs, seq_len)     
         else:
-            loss, preds = self.greedy_selection_v1(response,encoder_output, mask,conv_history_embeddings, social_embeddings,social_reps,user_model) # (1), (bs, seq_len)               
+            loss, preds = self.nucleus_sampling(response,encoder_output, mask,conv_history_embeddings, social_information,social_reps,user_model) # (1), (bs, seq_len)               
         dist_2, dist_3, dist_4 = self.metrics_cal_conv(preds)
-        # log.info("****************************")
-        # log.info(f"{dist_2} dist-2")
-        # log.info(f"{dist_3} dist-3")
-        # log.info(f"{dist_4} dist-4")
-        # log.info(f"{loss} conv_loss")
+        log.info("****************************")
+        log.info(f"{dist_2} dist-2")
+        log.info(f"{dist_3} dist-3")
+        log.info(f"{dist_4} dist-4")
+        log.info(f"{loss} conv_loss")
         return loss, dist_2, dist_3, dist_4
     
 

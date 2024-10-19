@@ -12,12 +12,12 @@ random.seed(42)
 # Load the JSON file containing the conversations
 conversations = []
 test_conversations = []
-with open('input/train_data.jsonl', 'r') as file:
+with open('input/redial/train_data.jsonl', 'r') as file:
     for line in file:
         # Check if the line is not empty
         if line.strip():
             conversations.append(json.loads(line))
-with open('input/test_data.jsonl', 'r') as file:
+with open('input/redial/test_data.jsonl', 'r') as file:
     for line in file:
         # Check if the line is not empty
         if line.strip():
@@ -31,16 +31,18 @@ for conversation in conversations + test_conversations:
     #inilized all users set
     initiator_id = conversation['initiatorWorkerId']
     respondent_id = conversation['respondentWorkerId']
-    if isinstance(conversation.get('initiatorQuestions', {}), dict):
-        for movie_id, details in conversation['initiatorQuestions'].items():
-            if details.get('liked'):
-                unique_users.add(initiator_id)
-                break
-    if isinstance(conversation.get('respondentQuestions', {}), dict):
-        for movie_id, details in conversation['respondentQuestions'].items():
-            if details.get('liked'):
-                unique_users.add(respondent_id)
-                break
+    unique_users.add(initiator_id)
+    unique_users.add(respondent_id)
+    # if isinstance(conversation.get('initiatorQuestions', {}), dict):
+    #     for movie_id, details in conversation['initiatorQuestions'].items():
+    #         if details.get('liked'):
+                
+    #             break
+    # if isinstance(conversation.get('respondentQuestions', {}), dict):
+    #     for movie_id, details in conversation['respondentQuestions'].items():
+    #         if details.get('liked'):
+                
+    #             break
     #ininlized all movies set 
     if isinstance(conversation.get('movieMentions', {}), dict):
         unique_movies.update(movie_id for movie_id, name in conversation['movieMentions'].items())

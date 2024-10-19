@@ -61,7 +61,7 @@ class ConversationHistoryEncoder(nn.Module):
             self.embedding = nn.Embedding(self.vocab_size, self.token_emb_dim, self.pad_token_idx)
             nn.init.normal_(self.embedding.weight, mean=0, std=self.user_emb_dim ** -0.5)
             nn.init.constant_(self.embedding.weight[self.pad_token_idx], 0)   
-            self.load_fasttext_embeddings() 
+            # self.load_fasttext_embeddings() 
 
     def load_fasttext_embeddings(self):
         path_data = self.dir_data + "/cc.en.300.bin"

@@ -1,0 +1,6 @@
+*.json
+*.xlsx
+*.jsonl
+*.txt
+*.pickle
+*.npz

@@ -17,6 +17,7 @@ import contractions
 import re
 import sys
 import io
+import math
 from sklearn.model_selection import train_test_split
 
 contraction_mapping = {
@@ -107,12 +108,12 @@ token_mapping = {}
 
 entity_mapping = {}
 
-with open('input/train_data.jsonl', 'r', encoding='utf-8') as file:
+with open('input/redial/train_data.jsonl', 'r', encoding='utf-8') as file:
     for line in file:
         # Check if the line is not empty
         if line.strip():
             conversations.append(json.loads(line))
-with open('input/test_data.jsonl', 'r', encoding='utf-8') as file:
+with open('input/redial/test_data.jsonl', 'r', encoding='utf-8') as file:
     for line in file:
         # Check if the line is not empty
         if line.strip():
@@ -120,26 +121,26 @@ with open('input/test_data.jsonl', 'r', encoding='utf-8') as file:
 
 
 
-with open('input/token2id.json', 'r', encoding='utf-8') as file:
+with open('input/redial/token2id.json', 'r', encoding='utf-8') as file:
     token_mapping = json.load(file)
 
-with open('input/train_data_c2crs.json', 'r', encoding='utf-8') as file:
+with open('input/redial/train_data_c2crs.json', 'r', encoding='utf-8') as file:
     train_conv = json.load(file)
 
-with open('input/test_data_c2crs.json', 'r', encoding='utf-8') as file:
+with open('input/redial/test_data_c2crs.json', 'r', encoding='utf-8') as file:
     test_conv = json.load(file)
 
-with open('input/valid_data_c2crs.json', 'r', encoding='utf-8') as file:
+with open('input/redial/valid_data_c2crs.json', 'r', encoding='utf-8') as file:
     val_conv = json.load(file)  
 
-with open('input/entity2id.json', 'r', encoding='utf-8') as file:
+with open('input/redial/entity2id.json', 'r', encoding='utf-8') as file:
     entity_mapping = json.load(file)      
 
-with open('input/redial_context_movie_id2crslab_entityId.json', 'r', encoding='utf-8') as file:
+with open('input/redial/redial_context_movie_id2crslab_entityId.json', 'r', encoding='utf-8') as file:
     movie_entiy_mapping = json.load(file)   
 
 
-ratings = pd.read_excel('input/ratings.xlsx')
+ratings = pd.read_excel('input/redial/ratings.xlsx')
 
 # Initialize a dictionary to hold user interactions
 
@@ -161,6 +162,7 @@ allConv = conversations  + test_conversations
 movieLikedDict = {}
 newTokensUserIds= set()
 userRelations = {}
+userRelationsWeights = {}
 userTie ={}
 users_training= set()
 users_test= set()
@@ -177,25 +179,42 @@ user_ratings = {}
 item_interactions = {}
 item_ratings = {}  
 all_conv_c2cs = {} 
-
-
+all_liked_items_byUser = {}
+recommenderSeekerTracking = {}
+user_to_index = {}
+movie_to_index = {}
 
 
 
 
 def createUniqueMapping(unique_movies, unique_users):
     print("createUniqueMapping")
-    for conversation in conversations + test_conversations:
-        #inilized all users set
-        initiator_id = conversation['initiatorWorkerId']
-        respondent_id = conversation['respondentWorkerId']
-        unique_users.update([initiator_id, respondent_id])
-        #ininlized all movies set 
-        if isinstance(conversation.get('movieMentions', {}), dict):
-            unique_movies.update(movie_id for movie_id, name in conversation['movieMentions'].items())
-    # Create a mapping for movies and users to indices
-    movie_to_index = {movie_id: index for index, movie_id in enumerate(unique_movies)}
-    user_to_index = {user_id: index for index, user_id in enumerate(unique_users)}
+    with open('input/redial/user_list.txt') as f:
+            check = False
+            for l in f.readlines():
+                if check :
+                    if len(l) > 0:
+                        l = l.strip('\n').split(' ')
+                        uid = int(l[0])
+                        user_id = int(l[1])
+                        user_to_index[uid] = user_id 
+                        unique_users.add(user_id)
+                else : 
+                    check = True         
+
+    with open('input/redial/item_list.txt') as f:
+        check = False
+        for l in f.readlines():
+            if check :
+                if len(l) > 0:
+                    l = l.strip('\n').split(' ')
+                    iid = int(l[0])
+                    item_id = int(l[1])
+                    movie_to_index[iid] = item_id
+                    unique_movies.add(item_id)
+                    
+            else : 
+                check = True
     return movie_to_index, user_to_index
  
 
@@ -213,7 +232,7 @@ def process_original_dataset(user_to_index,movie_to_index):
         # print(conversation)
         # Extract the initiator and respondent worker IDs
         initiator_mentioned_movies = []
-        initiator_rec_movies = []
+        # initiator_rec_movies = []
         respondent_mentioned_movies = []
         respondent_rec_movies = []
         initiator_mentioned_entities = []
@@ -224,22 +243,22 @@ def process_original_dataset(user_to_index,movie_to_index):
         conversation['respondentWorkerId'] = user_to_index[respondent_id]
         if isinstance(conversation['initiatorQuestions'], dict):
             for movie_id, details in conversation['initiatorQuestions'].items():
-                initiator_mentioned_movies.append(movie_to_index[movie_id])
+                initiator_mentioned_movies.append(movie_to_index[int(movie_id)])
                 initiator_mentioned_entities.append(movie_entiy_mapping[movie_id])  
-                if details['suggested'] == 1 :
-                    initiator_rec_movies.append(movie_to_index[movie_id])
+                # if details['suggested'] == 0 :
+                #     initiator_rec_movies.append(movie_to_index[movie_id])
 
         if isinstance(conversation['respondentQuestions'], dict):
             for movie_id, details in conversation['respondentQuestions'].items():
-                respondent_mentioned_movies.append(movie_to_index[movie_id])  # Add to the set of liked movies
+                respondent_mentioned_movies.append(movie_to_index[int(movie_id)])  # Add to the set of liked movies
                 respondent_mentioned_entities.append(movie_entiy_mapping[movie_id])
                 if details['suggested'] == 1 :
-                    respondent_rec_movies.append(movie_to_index[movie_id])
+                    respondent_rec_movies.append(movie_to_index[int(movie_id)])
         conversation['initiator_mentioned_items'] = initiator_mentioned_movies
         conversation['initiator_mentioned_entities'] = initiator_mentioned_entities  
         conversation['respondent_mentioned_items'] = respondent_mentioned_movies
         conversation['respondent_mentioned_entities'] = respondent_mentioned_entities
-        conversation['initiator_rec_movies'] = initiator_rec_movies
+        # conversation['initiator_rec_movies'] = initiator_rec_movies
         conversation['respondent_rec_movies'] = respondent_rec_movies            
         for index, msg in enumerate(conversation['messages']):
             try:
@@ -271,15 +290,14 @@ def process_original_dataset(user_to_index,movie_to_index):
                 msg['rec_items'] = [] 
                 for word in msg['text']: 
                     if '@' in word and word[1:].isdigit():
-                        movie_id = word[1:]
+                        movie_id = int(word[1:])
                         msg['items'].append(movie_to_index[movie_id]) 
-                        msg['entities'].append(movie_entiy_mapping[movie_id])
-                        if msg['workerId'] == conversation['initiatorWorkerId'] :
-                            if movie_to_index[movie_id] in initiator_rec_movies:
-                                msg['rec_items'].append(movie_to_index[movie_id])
-                        else:
+                        msg['entities'].append(movie_entiy_mapping[word[1:]])
+                        if msg['workerId'] == conversation['respondentWorkerId'] :
                             if movie_to_index[movie_id] in respondent_rec_movies:
-                                msg['rec_items'].append(movie_to_index[movie_id])         
+                                msg['rec_items'].append(movie_to_index[movie_id])   
+                        
+                                  
             except KeyError:          
                 print(f"Conversation Key not found: {conversation['conversationId']}")
                 msg['workerId'] =  user_to_index[msg['senderWorkerId']]
@@ -291,15 +309,12 @@ def process_original_dataset(user_to_index,movie_to_index):
                 msg['rec_items'] = []
                 for word in msg['text']: 
                     if '@' in word and word[1:].isdigit():
-                        movie_id = word[1:]
+                        movie_id = int(word[1:])
                         msg['items'].append(movie_to_index[movie_id]) 
-                        msg['entities'].append(movie_entiy_mapping[movie_id])
-                        if msg['workerId'] == conversation['initiatorWorkerId'] :
-                            if movie_to_index[movie_id] in initiator_rec_movies:
-                                msg['rec_items'].append(movie_to_index[movie_id])
-                        else:
+                        msg['entities'].append(movie_entiy_mapping[word[1:]])
+                        if msg['workerId'] == conversation['respondentWorkerId'] :
                             if movie_to_index[movie_id] in respondent_rec_movies:
-                                msg['rec_items'].append(movie_to_index[movie_id]) 
+                                msg['rec_items'].append(movie_to_index[movie_id])   
             except  IndexError:
                 print(f"Conversation Message not found: {index}")
                 msg['workerId'] =  user_to_index[msg['senderWorkerId']]
@@ -311,15 +326,12 @@ def process_original_dataset(user_to_index,movie_to_index):
                 msg['rec_items'] = []
                 for word in msg['text']: 
                     if '@' in word and word[1:].isdigit():
-                        movie_id = word[1:]
+                        movie_id = int(word[1:])
                         msg['items'].append(movie_to_index[movie_id]) 
-                        msg['entities'].append(movie_entiy_mapping[movie_id])
-                        if msg['workerId'] == conversation['initiatorWorkerId'] :
-                            if movie_to_index[movie_id] in initiator_rec_movies:
-                                msg['rec_items'].append(movie_to_index[movie_id])
-                        else:
+                        msg['entities'].append(movie_entiy_mapping[word[1:]])
+                        if msg['workerId'] == conversation['respondentWorkerId'] :
                             if movie_to_index[movie_id] in respondent_rec_movies:
-                                msg['rec_items'].append(movie_to_index[movie_id]) 
+                                msg['rec_items'].append(movie_to_index[movie_id])   
               
 
 
@@ -436,7 +448,7 @@ def split_convs_randomly_just_split(lst, percentage):
 
            
 
-def process_data(train_conv,movieLikedDict, userRelations, token_freq ):
+def process_data(train_conv,movieLikedDict, userRelations, token_freq, recommenderSeekerTracking):
     print("process_data")
     for conversation in train_conv:
         initiator_id = conversation['initiatorWorkerId']
@@ -459,7 +471,13 @@ def process_data(train_conv,movieLikedDict, userRelations, token_freq ):
                             token_freq[token_id] = 1
                     except KeyError:
                         print(f"Token not found: {token}")
+                        if '@' in token and token[1:].isdigit():
+                            ew_id = len(token_mapping)
+                            token_mapping[token] = new_id
+                            token_freq[new_id] = 1
+                            continue
                         # Generate a random number between 0 and 1
+                        
                         if random.random() < 0.5:  # 50% chance
                             new_id = len(token_mapping)
                             token_mapping[token] = new_id
@@ -487,11 +505,66 @@ def process_data(train_conv,movieLikedDict, userRelations, token_freq ):
                     userRelations[initiator_id].add(respondent_id)
                 else:
                     userRelations[initiator_id] = {respondent_id} 
+                if respondent_id in recommenderSeekerTracking: 
+                    recommenderSeekerTracking[respondent_id].add(initiator_id)
+                else:
+                    recommenderSeekerTracking[respondent_id] = {initiator_id}     
                 if respondent_id in userRelations: 
                     userRelations[respondent_id].add(initiator_id)
                 else:
                     userRelations[respondent_id] = {initiator_id} 
     userRelations = {key: list(value) for key, value in userRelations.items()}   
+
+def processFriends(movieLikedDict, userRelations, recommenderSeekerTracking):
+    print("processFriends")
+    for user in userRelations:
+        if recommenderSeekerTracking.get(user):
+            for seeker1 in recommenderSeekerTracking.get(user):
+                for seeker2 in recommenderSeekerTracking.get(user):
+                    if seeker1 != seeker2:
+                        if len(movieLikedDict[seeker1].intersection(movieLikedDict[seeker2])) > 0 :
+                            if seeker1 in userRelations: 
+                                userRelations[seeker1].add(seeker2)
+                            else:
+                                userRelations[seeker1] = {seeker2} 
+                            if seeker2 in userRelations: 
+                                userRelations[seeker2].add(seeker1)
+                               
+                            else:
+                                userRelations[seeker2] = {seeker1} 
+                
+def processUserRelationsWeight(movieLikedDict, userRelations):
+    print("processUserRelationsWeight")
+    for user1 in userRelations:
+        if userRelations.get(user1):
+            for user2 in userRelations.get(user1):
+                likedItemUser1 = movieLikedDict.get(user1, set())
+                likedItemUser2 = movieLikedDict.get(user2, set())
+                if len(likedItemUser1.intersection(likedItemUser2)) > 0 :
+                    # we needind the average ratings  for all common items 
+                    commonItems = likedItemUser1.intersection(likedItemUser2)
+                    user1Ratings = 0
+                    user2Ratings = 0
+                    for item in commonItems:
+                        user1Ratings += ratings.loc[user1, movie_to_index[int(item)]]
+                        user2Ratings += ratings.loc[user2,  movie_to_index[int(item)]]
+                    averageRatings = (user1Ratings / len(commonItems)  +  user2Ratings / len(commonItems) ) /2
+                    if math.floor(averageRatings) > 5:
+                        averageRatings = 5
+                    else:
+                        averageRatings = math.floor(averageRatings)    
+                    if user1 in userRelationsWeights: 
+                        userRelationsWeights[user1].append(averageRatings)
+                    else:
+                        userRelationsWeights[user1] = [averageRatings]
+                else :
+                    if user1 in userRelationsWeights: 
+                        userRelationsWeights[user1].append(0)
+                    else:
+                        userRelationsWeights[user1] = [0]
+
+              
+                     
 
 
 
@@ -519,13 +592,13 @@ def create_interaction_matrix(convs, interaction_matrix, movie_to_index):
         if isinstance(conversation['initiatorQuestions'], dict):
             for movie_id, details in conversation['initiatorQuestions'].items():
                 if details['liked']:  # Check if the movie is liked
-                    initiator_liked.add(movie_to_index[movie_id])  # Add to the set of liked movies
-                interaction_matrix[initiator_id, movie_to_index[movie_id]] = 1 if details.get('liked') else -1
+                    initiator_liked.add(movie_to_index[int(movie_id)])  # Add to the set of liked movies
+                interaction_matrix[initiator_id, movie_to_index[int(movie_id)]] = 1 if details.get('liked') else -1
         if isinstance(conversation['respondentQuestions'], dict):
             for movie_id, details in conversation['respondentQuestions'].items():
                 if details['liked']:  # Check if the movie is liked
-                    respondent_liked.add(movie_to_index[movie_id])  # Add to the set of liked movies
-                interaction_matrix[respondent_id, movie_to_index[movie_id]] = 1 if details.get('liked') else -1   
+                    respondent_liked.add(movie_to_index[int(movie_id)])  # Add to the set of liked movies
+                interaction_matrix[respondent_id, movie_to_index[int(movie_id)]] = 1 if details.get('liked') else -1   
 
 
 def create_user_item_ratings(interaction_matrix,user_interactions,user_ratings,item_interactions, item_ratings ):
@@ -632,10 +705,11 @@ def create_interaction_dataset(interaction_matrix, user_interactions,user_rating
         test_v, # test_v
         test_r, # test_r
         userRelations, # social_adj_lists
+        userRelationsWeights, # social_adj_ratings
         ratings_map # ratings_list
     ]
     # Save the combined datasets to a .pickle file
-    with open('redial_interactions.pickle', 'wb') as f:
+    with open('outputSISSF/redial_interactions.pickle', 'wb') as f:
         pickle.dump(datasets, f)
        
 
@@ -647,7 +721,9 @@ create_new_data(allConvsIda, allConv,train_conv + test_conv + val_conv, users_tr
 
 newSmallTest, newTrain = split_convs_proportionally(newConversations, 20)
 newVal, newTest = split_convs_randomly_just_split(newSmallTest, 50 )
-process_data(newTrain,movieLikedDict, userRelations, token_freq) 
+process_data(newTrain,movieLikedDict, userRelations, token_freq, recommenderSeekerTracking)
+processFriends(movieLikedDict, userRelations, recommenderSeekerTracking) 
+processUserRelationsWeight(movieLikedDict, userRelations) 
 process_test_data(newTest)
 process_test_data(newVal)
 create_interaction_matrix(newTrain, interaction_matrix, movie_to_index)
@@ -692,6 +768,5 @@ with open('outputSISSF/token_freq.json', 'w') as json_file:
 print(len(newTest))
 print(len(newTrain))
 print(len(newVal))
-
 
 

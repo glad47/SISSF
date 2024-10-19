@@ -1,3 +1,4 @@
+
 ## Author: ggffhh3344@gmail.com Abdulaziz Ahmed
 ## Date: 2024-06-11 11:15:59
 ## LastEditTime: 2024-08-18 10:15:14
@@ -63,26 +64,43 @@ class TransformerEncoderLayer(nn.Module):
         self.norm1 = nn.LayerNorm(embed_dim)
         self.dropout1 = nn.Dropout(dropout)
 
+        self.cross_attn2 = MultiHeadAttention(n_heads, embed_dim, dropout=att_dropout)
+        self.norm2 = nn.LayerNorm(embed_dim)
+        self.dropout2 = nn.Dropout(dropout)
+
+        self.cross_attn3 = MultiHeadAttention(n_heads, embed_dim, dropout=att_dropout)
+        self.norm3 = nn.LayerNorm(embed_dim)
+        self.dropout3 = nn.Dropout(dropout)
+
         self.ffn = nn.Sequential(
             nn.Linear(embed_dim, ffn_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(ffn_dim, embed_dim)
         )
-        self.norm2 = nn.LayerNorm(embed_dim)
-        self.dropout2 = nn.Dropout(dropout)
+        self.norm4 = nn.LayerNorm(embed_dim)
+        self.dropout4 = nn.Dropout(dropout)
 
-    def forward(self, src, src_mask):
+    def forward(self, src,embs2, conv_embs, src_mask):
         # (bs, dim), None
         # Self-attention
         src2 = self.self_attn(src, src, src, mask=src_mask).squeeze(1)    #(bs,  dim)
         src = src + self.dropout1(src2)                                   #(bs,  dim)
         src = self.norm1(src)                                             #(bs,  dim)
 
-        # Feed-forward
-        src2 = self.ffn(src)                                              #(bs,  dim)
+        src2 = self.cross_attn2(src, embs2, embs2, mask=src_mask).squeeze(1)    #(bs,  dim)
         src = src + self.dropout2(src2)                                   #(bs,  dim)
         src = self.norm2(src)                                             #(bs,  dim)
+
+        src2 = self.cross_attn3(src, conv_embs, conv_embs, mask=src_mask).squeeze(1)    #(bs,  dim)
+        src = src + self.dropout3(src2)                                   #(bs,  dim)
+        src = self.norm3(src)                                             #(bs,  dim)
+
+
+        # Feed-forward
+        src2 = self.ffn(src)                                              #(bs,  dim)
+        src = src + self.dropout4(src2)                                   #(bs,  dim)
+        src = self.norm4(src)                                             #(bs,  dim)
 
         return src  #(bs,  dim)
 
@@ -96,9 +114,9 @@ class TransformerEncoder(nn.Module):
         self.norm = nn.LayerNorm(embed_dim)
        
 
-    def forward(self, src, src_mask):
+    def forward(self, src,embs2, conv_embs, src_mask):
         for layer in self.layers:
-            src = layer(src, src_mask)  #(bs,  dim)
+            src = layer(src, embs2, conv_embs,src_mask)  #(bs,  dim)
         src = self.norm(src)            #(bs,  dim)
         return src                      #(bs,  dim)
 
@@ -111,6 +129,18 @@ class TransformerDecoderLayer(nn.Module):
         self.norm1 = nn.LayerNorm(embed_dim)
         self.norm_cross = nn.LayerNorm(embed_dim)
         self.dropout1 = nn.Dropout(dropout)
+        self.dropout_cross = nn.Dropout(dropout)
+        
+        self.cross_attn2 = MultiHeadAttention(n_heads, embed_dim, dropout=att_dropout)
+
+        self.norm_cross2 = nn.LayerNorm(embed_dim)
+        self.dropout_cross2 = nn.Dropout(dropout)
+
+
+        self.cross_attn3 = MultiHeadAttention(n_heads, embed_dim, dropout=att_dropout)
+
+        self.norm_cross3 = nn.LayerNorm(embed_dim)
+        self.dropout_cross3 = nn.Dropout(dropout)
         
         self.ffn = nn.Sequential(
             nn.Linear(embed_dim, ffn_dim),
@@ -121,18 +151,29 @@ class TransformerDecoderLayer(nn.Module):
         self.norm3 = nn.LayerNorm(embed_dim)
         self.dropout3 = nn.Dropout(dropout)
 
-    def forward(self, tgt, embs, tgt_mask, memory_mask):
+    def forward(self, tgt, embs,embs2, conv_embs, tgt_mask, memory_mask):
         # (bs,  dim), (bs,  dim), None, None
-        # Self-attention on the target sequence
+        # Self-attention on the encoder output
         tgt2 = self.self_attn(tgt, tgt, tgt, mask=tgt_mask).squeeze(1)              # (bs,  dim)
         tgt = tgt + self.dropout1(tgt2)                                             # (bs,  dim)
         tgt = self.norm1(tgt)                                                       # (bs,  dim)
 
-        # Cross-attention with the encoder's output (memory)
+        # Cross-attention with the recommeender user repesentation 
         tgt2 = self.cross_attn(tgt, embs, embs, mask=memory_mask).squeeze(1)        # (bs,  dim)
-        tgt = tgt + self.dropout1(tgt2)                                             # (bs,  dim)
+        tgt = tgt + self.dropout_cross(tgt2)                                             # (bs,  dim)
         tgt = self.norm_cross(tgt)                                                  # (bs,  dim)
 
+
+        # Cross-attention with the seeker user repesentation 
+        tgt2 = self.cross_attn2(tgt, embs2, embs2, mask=memory_mask).squeeze(1)        # (bs,  dim)
+        tgt = tgt + self.dropout_cross2(tgt2)                                             # (bs,  dim)
+        tgt = self.norm_cross2(tgt)    
+
+
+        # Cross-attention with the conversation hsitory representation 
+        tgt2 = self.cross_attn3(tgt, conv_embs, conv_embs, mask=memory_mask).squeeze(1)        # (bs,  dim)
+        tgt = tgt + self.dropout_cross3(tgt2)                                             # (bs,  dim)
+        tgt = self.norm_cross3(tgt)      
         
 
 
@@ -153,10 +194,10 @@ class TransformerDecoder(nn.Module):
         self.norm = nn.LayerNorm(embed_dim)
         self.output_projection = nn.Linear(embed_dim, n_items)  # Project to the number of items
 
-    def forward(self, tgt, embs, tgt_mask, memory_mask):
+    def forward(self, tgt, embs,embs2, conv_embs, tgt_mask, memory_mask):
         #(bs,  dim), (bs,  dim), None, None
         for layer in self.layers:
-            tgt = layer(tgt, embs ,tgt_mask, memory_mask) # (bs,  dim)
+            tgt = layer(tgt, embs,embs2, conv_embs ,tgt_mask, memory_mask) # (bs,  dim)
         tgt = self.norm(tgt)  # (bs,  dim)
         
         # Project the output to the number of items
@@ -199,12 +240,12 @@ class RecommenderTransformer(nn.Module):
             att_dropout= attention_dropout
         )
 
-    def forward(self, embs, mask=None):
+    def forward(self, user_embs,user_embs2, conv_embs, mask=None):
         #(bs,  dim), None
         # Pass through the encoder
-        encoder_output = self.encoder(embs, mask) #(bs,  dim)
+        encoder_output = self.encoder(user_embs,user_embs2, conv_embs, mask) #(bs,  dim)
 
         # Pass through the decoder
-        decoder_output = self.decoder(encoder_output, embs, mask, None)  #(bs,  n_item)
+        decoder_output = self.decoder(encoder_output, user_embs,user_embs2, conv_embs, mask, None)  #(bs,  n_item)
 
         return decoder_output   #(bs,  n_item)               

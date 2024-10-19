@@ -80,18 +80,18 @@ class SISSF:
         parser = argparse.ArgumentParser()
         parser.add_argument('--batch-size',
             help='Batch size to use for training',
-            default=4,
+            default=300,
             type=int,
         )
         parser.add_argument('--test-batch-size',
             help='Test Batch size to use for training',
-            default=3,
+            default=300,
             type=int,
         )
 
         parser.add_argument('--valid-batch-size',
             help='Validation Batch size to use for training',
-            default=3,
+            default=300,
             type=int,
         )
         parser.add_argument('--num-workers',
@@ -106,7 +106,7 @@ class SISSF:
         )
         parser.add_argument('--kfold',
             help='Number of fold to split the dataset',
-            default=10,
+            default=3,
             type=int,
         )
         parser.add_argument('--mode',
@@ -119,7 +119,7 @@ class SISSF:
         ) 
         parser.add_argument('--lr',
             help="The learning rate",
-            default=1e-3,
+            default=1e-5,
             type=float
         )
         parser.add_argument('--lr-bert',
@@ -162,6 +162,11 @@ class SISSF:
         parser.add_argument('--dataset',
             help=" Dataset",
             default='data/dataset',
+        )
+
+        parser.add_argument('--dataset-type',
+            help="Dataset Type ReDial -> ReDial datatset, INSPIRED -> INSPIRED dataset",
+            default='ReDial',
         )
 
         parser.add_argument('--pretrain-token-embeddings-weights',
@@ -211,23 +216,23 @@ class SISSF:
         )
         parser.add_argument('--kg-emb-dim',
             help="The dimensionality of the knowledge graph embeddings",
-            default=128,
+            default=768,
             type=int,
         )
         parser.add_argument('--social-emb-dim',
             help="The dimensionality of the social graph embeddings",
-            default=128,
+            default=768,
             type=int,
         )
         parser.add_argument('--interaction-emb-dim',
             help="The dimensionality of the user-item graph embeddings",
-            default=128,
+            default=768,
             type=int,
         )
 
         parser.add_argument('--user-emb-dim',
             help="The dimensionality of the user embeddings",
-            default=128,
+            default=768,
             type=int,
         )
         parser.add_argument('--num-bases',
@@ -348,7 +353,7 @@ class SISSF:
 
         parser.add_argument('--cumulative-prob-th',
             help="top-p sampling (also known as nucleus sampling), cumulative probability threshold",
-            default=0.95,
+            default=0.4,
             type=float,
         )
 
@@ -395,7 +400,8 @@ class SISSF:
             'pad_entity': 0,
             'pad_word': 0
         }
-        self.best_score = 9999.0
+        self.val_score = 0
+        self.best_score = 0
         self.endure_count = 0
         self.use_cuda = torch.cuda.is_available()
         self.device = torch.device("cuda" if self.use_cuda else "cpu")
@@ -494,7 +500,7 @@ class SISSF:
 
     def initDataset(self):
         self.dataset = DatasetSISSF(self.special_token_idx,self.cli_args.token_freq_th, self.cli_args.weight_th, 
-                               self.cli_args.context_truncate, self.cli_args.response_truncate, self.cli_args.dataset, self.cli_args.mode)
+                               self.cli_args.context_truncate, self.cli_args.response_truncate, self.cli_args.dataset, self.cli_args.dataset_type, self.cli_args.mode)
         
     
 
@@ -535,7 +541,7 @@ class SISSF:
 
         self.val_dl = DataLoader(
             self.dataset.valid_data,
-            batch_size=test_batch_size,
+            batch_size=valid_batch_size,
             num_workers=self.cli_args.num_workers,
             pin_memory=self.use_cuda,
             collate_fn= self.dataset.batchify
@@ -569,10 +575,10 @@ class SISSF:
            
     def initModel(self):
         if self.cli_args.mode == 'semantic':
-            self.model =  SemanticFusion(self.cli_args.dataset, self.cli_args.social_emb_dim, self.cli_args.interaction_emb_dim, self.cli_args.user_emb_dim,
+            self.model =  SemanticFusion(self.cli_args.dataset, self.cli_args.dataset_type, self.cli_args.social_emb_dim, self.cli_args.interaction_emb_dim, self.cli_args.user_emb_dim,
                                         self.dataset.users,self.dataset.items,
                                         self.cli_args.kg_emb_dim,
-                                        self.dataset.n_entity, self.cli_args.num_bases, self.cli_args.dataset, self.cli_args.pretrain_token_embeddings_weights, self.cli_args.token_emb_dim,
+                                        0, self.cli_args.num_bases, self.cli_args.dataset, self.cli_args.pretrain_token_embeddings_weights, self.cli_args.token_emb_dim,
                                         self.cli_args.n_heads, self.cli_args.n_layers,self.cli_args.ffn_size, len(self.dataset.tok2ind),self.dataset.tok2ind,
                                         self.cli_args.dropout, self.cli_args.attention_dropout, self.cli_args.relu_dropout,
                                         self.special_token_idx['pad'],self.special_token_idx['start'],self.cli_args.learn_positional_embeddings,
@@ -582,10 +588,10 @@ class SISSF:
             if self.cli_args.semantic_fusion_weights:
                 self.cli_args.pretrain_token_embeddings_weights = None
             
-            self.semantic_model = SemanticFusion(self.cli_args.dataset, self.cli_args.social_emb_dim, self.cli_args.interaction_emb_dim, self.cli_args.user_emb_dim,
+            self.semantic_model = SemanticFusion(self.cli_args.dataset, self.cli_args.dataset_type, self.cli_args.social_emb_dim, self.cli_args.interaction_emb_dim, self.cli_args.user_emb_dim,
                                         self.dataset.users,self.dataset.items,
                                         self.cli_args.kg_emb_dim,
-                                        self.dataset.n_entity, self.cli_args.num_bases, self.cli_args.dataset, self.cli_args.pretrain_token_embeddings_weights, self.cli_args.token_emb_dim,
+                                        0, self.cli_args.num_bases, self.cli_args.dataset, self.cli_args.pretrain_token_embeddings_weights, self.cli_args.token_emb_dim,
                                         self.cli_args.n_heads, self.cli_args.n_layers,self.cli_args.ffn_size, len(self.dataset.tok2ind),self.dataset.tok2ind,
                                         self.cli_args.dropout, self.cli_args.attention_dropout, self.cli_args.relu_dropout,
                                         self.special_token_idx['pad'],self.special_token_idx['start'],self.cli_args.learn_positional_embeddings,
@@ -599,7 +605,7 @@ class SISSF:
 
 
             self.model = RecommenderModule(self.cli_args.user_emb_dim,self.cli_args.interaction_emb_dim, self.cli_args.social_emb_dim,
-                                           self.cli_args.kg_emb_dim, self.dataset.n_items, self.dataset.n_entity,
+                                           self.cli_args.kg_emb_dim, self.dataset.n_items, 0,
                                            self.dataset.n_users,self.cli_args.rec_heads,self.cli_args.rec_ffn_size,
                                            self.cli_args.rec_dropout, self.cli_args.attention_dropout,self.cli_args.rec_layers, self.device )  
         elif self.cli_args.mode == 'conv':
@@ -607,10 +613,10 @@ class SISSF:
             if self.cli_args.semantic_fusion_weights:
                 self.cli_args.pretrain_token_embeddings_weights = None
             
-            self.semantic_model = SemanticFusion(self.cli_args.dataset, self.cli_args.social_emb_dim, self.cli_args.interaction_emb_dim, self.cli_args.user_emb_dim,
+            self.semantic_model = SemanticFusion(self.cli_args.dataset,self.cli_args.dataset_type, self.cli_args.social_emb_dim, self.cli_args.interaction_emb_dim, self.cli_args.user_emb_dim,
                                         self.dataset.users,self.dataset.items,
                                         self.cli_args.kg_emb_dim,
-                                        self.dataset.n_entity, self.cli_args.num_bases, self.cli_args.dataset, self.cli_args.pretrain_token_embeddings_weights, self.cli_args.token_emb_dim,
+                                        0, self.cli_args.num_bases, self.cli_args.dataset, self.cli_args.pretrain_token_embeddings_weights, self.cli_args.token_emb_dim,
                                         self.cli_args.n_heads, self.cli_args.n_layers,self.cli_args.ffn_size, len(self.dataset.tok2ind),self.dataset.tok2ind,
                                         self.cli_args.dropout, self.cli_args.attention_dropout, self.cli_args.relu_dropout,
                                         self.special_token_idx['pad'],self.special_token_idx['start'],self.cli_args.learn_positional_embeddings,
@@ -625,7 +631,8 @@ class SISSF:
 
             # Access the embedding weights using the key for the embedding layer
             embedding_weights = state_dict['conversation_encoder.embedding.weight']
-            self.model = ConversationalModule(self.cli_args.user_emb_dim, self.cli_args.social_emb_dim, self.cli_args.conv_heads,
+            self.model = ConversationalModule(self.cli_args.dataset,self.cli_args.dataset_type, self.cli_args.user_emb_dim, 
+                                             self.cli_args.social_emb_dim, self.cli_args.conv_heads,
                                              self.cli_args.conv_ffn_size,self.cli_args.conv_dropout, self.cli_args.conv_dropout,
                                              self.cli_args.conv_dropout, self.cli_args.conv_layers, len(self.dataset.tok2ind), 
                                              self.special_token_idx['start'], self.special_token_idx['pad'],self.special_token_idx['end'], 
@@ -698,6 +705,8 @@ class SISSF:
         with torch.no_grad():
             valMetrics_g = torch.zeros(METRICS_SIZE, len(self.val_dl.dataset), device=self.device)
             self.model.eval()
+            if self.cli_args.mode == 'rec' or  self.cli_args.mode == 'conv':
+                self.semantic_model.eval()
 
             batch_iter = enumerateWithEstimate(
                 self.val_dl,
@@ -722,6 +731,8 @@ class SISSF:
         with torch.no_grad():
             testMetrics_g = torch.zeros(METRICS_SIZE, len(self.test_dl.dataset), device=self.device)
             self.model.eval()
+            if self.cli_args.mode == 'rec' or  self.cli_args.mode == 'conv':
+                self.semantic_model.eval()
 
             batch_iter = enumerateWithEstimate(
                 self.test_dl,
@@ -1007,9 +1018,9 @@ class SISSF:
         if self.cli_args.mode == 'semantic':
             return metrics_dict['loss/all']
         elif self.cli_args.mode == 'rec':
-            return metrics_dict['R@1']
+            return metrics_dict['R@1'], metrics_dict['R@50']
         elif self.cli_args.mode == 'conv':
-            return metrics_dict['DIST_2']    
+            return metrics_dict['loss/all']    
 
     
 
@@ -1149,9 +1160,9 @@ class SISSF:
     
 
 
-    def main(self):
+    def mainV1(self):
         log.info("Starting {}, {}, Mode {}".format(type(self).__name__, self.cli_args, self.cli_args.mode))
-        
+        self.best_score = 9999.0
         
         
         if not self.cli_args.test_mode :
@@ -1167,6 +1178,15 @@ class SISSF:
                 valMetrics_t = self.doValidation(epoch, 0)
                 score = self.logMetrics(0, 'val', valMetrics_t)   
                 if self.cli_args.mode == 'semantic':
+                    if  score < self.best_score:
+                        self.best_score = score
+                        self.endure_count = 0
+                        self.saveModel(epoch, True)
+                    else:
+                        self.endure_count += 1
+                        self.saveModel(epoch, False)
+                    log.info("loss: %.4f" % (score))
+                elif self.cli_args.mode == 'conv':
                     if epoch % 50 == 0:
                         if  score < self.best_score:
                             self.best_score = score
@@ -1175,27 +1195,7 @@ class SISSF:
                         else:
                             self.endure_count += 1
                             self.saveModel(epoch, False)
-                        log.info("loss: %.4f" % (score))
-                elif self.cli_args.mode == 'rec':
-                    if epoch % 50 == 0:
-                        if  score > self.best_score:
-                            self.best_score = score
-                            self.endure_count = 0
-                            self.saveModel(epoch, True)
-                        else:
-                            self.endure_count += 1
-                            self.saveModel(epoch, False)
-                    log.info("R@1: %.4f" % (score))
-                elif self.cli_args.mode == 'conv':
-                    if epoch % 50 == 0:
-                        if  score > self.best_score:
-                            self.best_score = score
-                            self.endure_count = 0
-                            self.saveModel(epoch, True)
-                        else:
-                            self.endure_count += 1
-                            self.saveModel(epoch, False)
-                    log.info("DIST_1: %.4f" % (score))    
+                    log.info("loss: %.4f" % (score))    
 
                 end_time = time.time()  
                 epoch_duration = end_time - start_time 
@@ -1210,12 +1210,123 @@ class SISSF:
             testMetrics_t = self.doTesting(0)
             score = self.logMetrics(0, 'test', testMetrics_t)     
 
+    def initDataloadersV2(self, train_index, test_index):
+        
+        batch_size = self.cli_args.batch_size
+        valid_batch_size = self.cli_args.valid_batch_size
+        test_batch_size = self.cli_args.test_batch_size
+        
+        
+            
+        train_set, val_set = random_split(self.dataset.train_data, [len(train_index), len(test_index)])
+        if self.use_cuda:
+            batch_size *= torch.cuda.device_count()
+            valid_batch_size *= torch.cuda.device_count()
+            test_batch_size *= torch.cuda.device_count()
+            
+        
+        self.train_dl = DataLoader(
+            train_set,
+            batch_size=batch_size,
+            num_workers=self.cli_args.num_workers,
+            pin_memory=self.use_cuda,
+            collate_fn= self.dataset.batchify
+        )
+
+      
+
+        self.val_dl = DataLoader(
+            val_set,
+            batch_size=valid_batch_size,
+            num_workers=self.cli_args.num_workers,
+            pin_memory=self.use_cuda,
+            collate_fn= self.dataset.batchify
+        )
+
+
+        self.test_dl = DataLoader(
+            self.dataset.test_data,
+            batch_size=test_batch_size,
+            num_workers=self.cli_args.num_workers,
+            pin_memory=self.use_cuda,
+            collate_fn= self.dataset.batchify
+        )    
 
                         
-           
+    def mainV2(self):
+        log.info("Starting {}, {}, Mode {}".format(type(self).__name__, self.cli_args, self.cli_args.mode))
+        
+        
+        if not self.cli_args.test_mode :
+            for epoch in range(self.start_epoch, self.cli_args.epochs + 1):
+                log.info("Epoch {} of {}".format(
+                        epoch,
+                        self.cli_args.epochs
+                    ))
+                start_time = time.time()
+                
+                trainMetrics_g = torch.zeros(METRICS_SIZE, self.cli_args.kfold, device=self.device)
+                valMetrics_g = torch.zeros(METRICS_SIZE, self.cli_args.kfold, device=self.device)
+                for fold_index, (train_index, test_index) in enumerate(self.kf.split(self.dataset.train_data)):
+                    self.initDataloadersV2(train_index, test_index)
+                    trnMetrics_t = self.doTraining(epoch, fold_index)
+                    self.calMetrics(trnMetrics_t, fold_index,trainMetrics_g)
+                
+                    valMetrics_t = self.doValidation(epoch, fold_index)
+                    self.calMetrics(valMetrics_t,fold_index, valMetrics_g)
+                
+                
+                trainData =trainMetrics_g.to('cpu')
+                valData =valMetrics_g.to('cpu')
+                self.logMetrics(epoch, 'trn', trainData)
+                score_R_1, score_R_50 = self.logMetrics(epoch, 'val', valData)       
+                 
+
+                if self.cli_args.dataset_type == 'ReDial':   
+                    score = score_R_1
+                    if score > self.val_score:
+                        testMetrics_t = self.doTesting(0)
+                        test_score_R_1, test_score_R_50 = self.logMetrics(0, 'test', testMetrics_t) 
+                        if  test_score_R_1 > self.best_score:
+                                self.best_score = test_score_R_1
+                                self.endure_count = 0
+                                self.saveModel(epoch, True)
+
+                else : 
+                    score = score_R_1 +  score_R_50 
+                    if score > self.val_score:
+                        testMetrics_t = self.doTesting(0)
+                        test_score_R_1, test_score_R_50 = self.logMetrics(0, 'test', testMetrics_t) 
+                        if  test_score_R_1 + test_score_R_50 > self.best_score:
+                                self.best_score = test_score_R_1 + test_score_R_50
+                                self.endure_count = 0
+                                self.saveModel(epoch, True)  
+                
+                        
+
+                end_time = time.time()  
+                epoch_duration = end_time - start_time 
+                log.info(f"Epoch {epoch} completed in {epoch_duration:.2f} seconds.")
+
+                if self.endure_count > self.cli_args.impatience  and False :
+                    log.info(f"Epoch {epoch}: early stopping.")
+                    break
+        
+        else:
+            self.initTestDataloaders()
+            testMetrics_t = self.doTesting(0)
+            score = self.logMetrics(0, 'test', testMetrics_t)       
           
       
-        
+    
+
+    def main(self):
+        if self.cli_args.mode == 'rec':
+            self.mainV2()
+        else:
+            self.mainV1() 
+
+
 
 if __name__ == '__main__':
     SISSF().main()
