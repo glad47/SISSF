@@ -134,10 +134,9 @@ And thanks the code from [dlwpt-code](https://github.com/deep-learning-with-pyto
 
 Any scientific publications that use our codes and datasets should cite the following paper as the reference:
 ```
-@inproceedings{10.1145/3488560.3498514,
+@inproceedings{AzizSISSF2024,
 title = {Improving Social Information Sensitive Semantic Fusion Using Contrastive Learning in Conversational Recommender System},
-author = {Mohammed Abdulaziz, Zhang Mingwei, Wang Ruizhe},
-booktitle = {WSDM},
+author = {Abdulaziz Mohammed, Mingwei Zhang, Gehad Abdullah Amran, Husam M. Alawadh, Wang Ruizhe, Amerah ALabrah, and Ali A. Al-Bakhrani},
 year = {2024},
 }
 ```
