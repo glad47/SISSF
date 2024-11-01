@@ -2,10 +2,10 @@
 
 
 
-# Improving Social Information Sensitive Semantic Fusion Using Contrastive Learning in Conversational Recommender System
-This is our implementation to preprocess the dataset of the paper SISSF 2024 Paper [**"Improving Social Information Sensitive Semantic Fusion Using Contrastive Learning in Conversational Recommender System"**](https://xxxx)
-Abdulaziz Mohammed, Mingwei Zhang, Gehad Abdullah Amran, Husam M. Alawadh, Wang Ruizhe, Amerah ALabrah, and Ali A. Al-Bakhrani
 
+# A social information sensitive model for conversational recommender systems
+This is our implementation to preprocess the dataset of the paper SISSF 2024 Paper [**"A social information sensitive model for conversational recommender systems"**](https://xxxx)
+Abdulaziz Mohammed, Mingwei Zhang, Gehad Abdullah Amran, Husam M. Alawadh, Ruizhe Wang, Amerah ALabrah, and Ali A. Al-Bakhrani
 
 
 ## Introduction

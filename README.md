@@ -1,8 +1,8 @@
 
 
-# Improving Social Information Sensitive Semantic Fusion Using Contrastive Learning in Conversational Recommender System
-The source code for our SISSF 2024 Paper [**"Improving Social Information Sensitive Semantic Fusion Using Contrastive Learning in Conversational Recommender System"**](https://xxxx)
-Abdulaziz Mohammed, Mingwei Zhang, Gehad Abdullah Amran, Husam M. Alawadh, Wang Ruizhe, Amerah ALabrah, and Ali A. Al-Bakhrani
+#  A social information sensitive model for conversational recommender systems
+The source code for our SISSF 2024 Paper [**" A social information sensitive model for conversational recommender systems"**](https://xxxx)
+Abdulaziz Mohammed, Mingwei Zhang, Gehad Abdullah Amran, Husam M. Alawadh, Ruizhe Wang, Amerah ALabrah, and Ali A. Al-Bakhrani
 
 ## Requirements
 * loguru == 0.7.2
@@ -23,7 +23,7 @@ Abdulaziz Mohammed, Mingwei Zhang, Gehad Abdullah Amran, Husam M. Alawadh, Wang 
 * tensorboard == 2.17.0
 
 ## Overview
-This paper presents an innovative framework for inducting social information from existing conversational dataset by inferring ratings and constructing user-item interaction and user-user relationship graphs. It also introduces a social information-sensitive semantic fusion approach, leveraging contrastive learning to bridge the semantic gap between social information and conversation history. Such an approach promises to deepen the understanding of user preferences and yield more personalized recommendations. We conduct experiments on two public datasets, and the results consistently confirm the effectiveness of our approach in both recommendation and conversational tasks.
+This paper presents an innovative social CRS framework for inducting social information from existing conversational dataset by inferring ratings and constructing user-item interaction and user-user relationship graphs. It also introduces a social information-sensitive semantic fusion approach, leveraging contrastive learning to bridge the semantic gap between social information and conversation history. Such an approach promises to deepen the understanding of user preferences and yield more personalized recommendations. We conduct experiments on two public datasets, and the results consistently confirm the effectiveness of our approach in both recommendation and conversational tasks.
 
 Hope it can help you!
 
@@ -135,8 +135,8 @@ And thanks the code from [dlwpt-code](https://github.com/deep-learning-with-pyto
 Any scientific publications that use our codes and datasets should cite the following paper as the reference:
 ```
 @inproceedings{AzizSISSF2024,
-title = {Improving Social Information Sensitive Semantic Fusion Using Contrastive Learning in Conversational Recommender System},
-author = {Abdulaziz Mohammed, Mingwei Zhang, Gehad Abdullah Amran, Husam M. Alawadh, Wang Ruizhe, Amerah ALabrah, and Ali A. Al-Bakhrani},
+title = {A social information sensitive model for conversational recommender systems},
+author = {Abdulaziz Mohammed, Mingwei Zhang, Gehad Abdullah Amran, Husam M. Alawadh, Ruizhe Wang, Amerah ALabrah, and Ali A. Al-Bakhrani},
 year = {2024},
 }
 ```
