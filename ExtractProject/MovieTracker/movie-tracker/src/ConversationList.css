@@ -1,0 +1,15 @@
+.conversation-container {
+    max-width: 50%;
+    box-sizing: border-box;
+    padding: 10px;
+    text-align: left;
+}
+
+.conversation {
+    font-size: 0.9em;
+}
+
+.highlight {
+    background-color: yellow;
+    font-weight: bold;
+}
