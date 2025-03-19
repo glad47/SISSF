@@ -148,8 +148,8 @@ class DatasetSISSF():
         
         
         self.train_data =SingleDataset(self._raw_data_process( self.train_data , "Processing Train Dataset"))
-        self.valid_data = SingleDataset(self._raw_data_process_test( self.valid_data , "Processing Valid Dataset"))
-        self.test_data = SingleDataset(self._raw_data_process_test( self.test_data , "Processing Test Dataset")) 
+        self.valid_data = SingleDataset(self._raw_data_process( self.valid_data , "Processing Valid Dataset"))
+        self.test_data = SingleDataset(self._raw_data_process( self.test_data , "Processing Test Dataset")) 
     
 
        
@@ -169,9 +169,13 @@ class DatasetSISSF():
     def _raw_data_process_test(self, raw_data, mode):
         logger.info(mode)
         augmented_conv = self.merge_conv_data_add_entities_mask(raw_data)
+        print(augmented_conv)
         augmented_conv = self.add_item_context(augmented_conv)
-        augmented_conv = self.augment_and_add_add_entities_mask(augmented_conv)
-        augmented_conv = self.seperate_rec_items(augmented_conv)
+        print(augmented_conv)
+        augmented_conv = self.spec_augment_and_add_add_entities_mask(augmented_conv)
+        print(augmented_conv)
+        augmented_conv = self.spec_seperate_rec_items(augmented_conv)
+        print(augmented_conv)
         return augmented_conv    
     
     def _raw_data_process_no_shfting(self, raw_data, mode):
@@ -333,7 +337,20 @@ class DatasetSISSF():
 
         return augment_dataset
 
-  
+    def spec_seperate_rec_items(self, dataset):
+        logger.info("Augment Conversations Seperate Recommended Items For Prediction")
+        augment_dataset = []
+        for conv_dict in tqdm(dataset):
+            if len(conv_dict['items']) > 0 :
+                for movie in conv_dict['items']:
+                    if not  isinstance(movie, list):
+                        augment_conv_dict = deepcopy(conv_dict)
+                        augment_conv_dict['items'] = movie
+                        augment_dataset.append(augment_conv_dict)
+            else: 
+                augment_conv_dict = deepcopy(conv_dict)           
+                augment_dataset.append(augment_conv_dict)
+        return augment_dataset
     
     def get_items_info_in_context_text(self, utt, text_token_ids):
         entity_ids_in_context = []   # [n_entities_in_context_text]
@@ -367,7 +384,74 @@ class DatasetSISSF():
         # Handle any exceptions (e.g., invalid input, unexpected data)
             return False
         return False
+    
+    def spec_augment_and_add_add_entities_mask(self, raw_conv_dict):
+        logger.info("Augment Conversations")
+        augmented_conv_dicts = []
+        
+        for conv in tqdm(raw_conv_dict):
+            context_tokens, context_entities_initiator, context_entities_respondent, context_items_initiator, context_items_respondent, items_mask_in_contexts, item_masks_in_contexts, item_ids_in_contexts = [], [], [], [], [], [], [], []
+            pad_utters = []
+            entity_set_initiator, entity_set_respondent = set(), set()
+            item_set_initiator, item_set_respondent = set(), set()
+            for utt in conv['messages']: 
+                text_tokens, entities, items, rec_items, items_mask_in_context, item_masks_in_context, item_ids_in_context = \
+                    utt["text"], utt["entities"], utt["items"], utt["rec_items"], utt["items_mask_in_context"], utt['item_masks_in_context'], utt['item_ids_in_context']
+                
+                
+                
+                if utt['senderWorkerId'] ==  conv['initiatorWorkerId']:
+                    for entity in entities:
+                        if entity not in entity_set_initiator:
+                            entity_set_initiator.add(entity)
+                            context_entities_initiator.append(entity)
 
+                    for item in items:
+                        if item not in item_set_initiator:
+                            item_set_initiator.add(item)
+                            context_items_initiator.append(item)
+                else :
+                    for entity in entities:
+                        if entity not in entity_set_respondent:
+                            entity_set_respondent.add(entity)
+                            context_entities_respondent.append(entity)
+
+                    for item in items:
+                        if item not in item_set_respondent:
+                            item_set_respondent.add(item)
+                            context_items_respondent.append(item)   
+
+                context_tokens.append(text_tokens)  # [n_utter, utter_len]   
+                items_mask_in_contexts.append(items_mask_in_context)  # [n_utter, utter_len]
+                # entity_masks_in_context = [n_entities_in_utter_text, utter_len]
+                padded_entity_masks_in_context = self.padd_entity_masks_in_context(pad_utters, item_masks_in_context) # [n_entities_in_utter_text, n_utter, utter_len]
+                item_masks_in_contexts.extend(padded_entity_masks_in_context) # [n_entities_in_context_text, n_utter, utter_len]
+                item_ids_in_contexts.extend(item_ids_in_context)  # [n_entities_in_context_text]
+                        
+
+            
+                pad_utters.append([0]*len(text_tokens))
+                conv_dict = {
+                    "conversationId" : conv['conversationId'],
+                    "current_worker_id": utt['senderWorkerId'],
+                    "initiatorWorkerId": conv['initiatorWorkerId'],
+                    "respondentWorkerId": conv['respondentWorkerId'],
+                    "context_tokens": copy(context_tokens),
+                    "response": text_tokens,
+                    "context_entities_initiator": copy(context_entities_initiator),
+                    "context_entities_respondent": copy(context_entities_respondent),
+                    "context_items_initiator": copy(context_items_initiator),
+                    "context_items_respondent": copy(context_items_respondent),
+                    "context_items": copy(items),
+                    "items_mask_in_context": copy(items_mask_in_contexts),
+                    "item_masks_in_context": copy(item_masks_in_contexts),
+                    "item_ids_in_context": copy(item_ids_in_contexts),
+                    "items": rec_items,
+                }
+                augmented_conv_dicts.append(conv_dict)
+                
+
+        return augmented_conv_dicts
 
     def augment_and_add_add_entities_mask(self, raw_conv_dict):
         logger.info("Augment Conversations")

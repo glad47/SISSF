@@ -302,7 +302,7 @@ class ConversationalModule(nn.Module):
         loss = self.conv_loss(flat_logits, flat_target) #(1)
         
 
-        return loss, preds  # (1), (bs, response_truncate)
+        return self.printCompareResult(preds)  # (1), (bs, response_truncate)
 
     
     
@@ -311,7 +311,16 @@ class ConversationalModule(nn.Module):
             
     
             
+    def printCompareResult(self, preds):
+        # sentences = []
+        for pred in preds:
+            sentence = ' '.join([self.ind2tok[token_id.item()] for token_id in pred])
+      
 
+        return sentence
+       
+
+           
       
     
     
@@ -330,16 +339,18 @@ class ConversationalModule(nn.Module):
         social_reps = self.lin3(social_reps).to(self.device)                                      # (bs, ns_social, dim)
         
         if self.training:
-            loss, preds = self.force_teaching(response,encoder_output, mask,conv_history_embeddings, social_information,social_reps, user_model)    # (1), (bs, seq_len)     
+            loss, preds = self.force_teaching(response,encoder_output, mask,conv_history_embeddings, social_information,social_reps, user_model)    # (1), (bs, seq_len) 
+            dist_2, dist_3, dist_4 = self.metrics_cal_conv(preds)    
+            return loss, dist_2, dist_3, dist_4
         else:
-            loss, preds = self.nucleus_sampling(response,encoder_output, mask,conv_history_embeddings, social_information,social_reps,user_model) # (1), (bs, seq_len)               
-        dist_2, dist_3, dist_4 = self.metrics_cal_conv(preds)
+            sentences = self.nucleus_sampling(response,encoder_output, mask,conv_history_embeddings, social_information,social_reps,user_model) # (1), (bs, seq_len)               
+            return sentences
         # log.info("****************************")
         # log.info(f"{dist_2} dist-2")
         # log.info(f"{dist_3} dist-3")
         # log.info(f"{dist_4} dist-4")
         # log.info(f"{loss} conv_loss")
-        return loss, dist_2, dist_3, dist_4
+        
     
 
     

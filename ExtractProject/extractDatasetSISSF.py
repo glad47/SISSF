@@ -108,12 +108,12 @@ token_mapping = {}
 
 entity_mapping = {}
 
-with open('input/redial/train_data.jsonl', 'r', encoding='utf-8') as file:
+with open('ExtractProject/input/redial/train_data.jsonl', 'r', encoding='utf-8') as file:
     for line in file:
         # Check if the line is not empty
         if line.strip():
             conversations.append(json.loads(line))
-with open('input/redial/test_data.jsonl', 'r', encoding='utf-8') as file:
+with open('ExtractProject/input/redial/test_data.jsonl', 'r', encoding='utf-8') as file:
     for line in file:
         # Check if the line is not empty
         if line.strip():
@@ -121,26 +121,26 @@ with open('input/redial/test_data.jsonl', 'r', encoding='utf-8') as file:
 
 
 
-with open('input/redial/token2id.json', 'r', encoding='utf-8') as file:
+with open('ExtractProject/input/redial/token2id.json', 'r', encoding='utf-8') as file:
     token_mapping = json.load(file)
 
-with open('input/redial/train_data_c2crs.json', 'r', encoding='utf-8') as file:
+with open('ExtractProject/input/redial/train_data_c2crs.json', 'r', encoding='utf-8') as file:
     train_conv = json.load(file)
 
-with open('input/redial/test_data_c2crs.json', 'r', encoding='utf-8') as file:
+with open('ExtractProject/input/redial/test_data_c2crs.json', 'r', encoding='utf-8') as file:
     test_conv = json.load(file)
 
-with open('input/redial/valid_data_c2crs.json', 'r', encoding='utf-8') as file:
+with open('ExtractProject/input/redial/valid_data_c2crs.json', 'r', encoding='utf-8') as file:
     val_conv = json.load(file)  
 
-with open('input/redial/entity2id.json', 'r', encoding='utf-8') as file:
+with open('ExtractProject/input/redial/entity2id.json', 'r', encoding='utf-8') as file:
     entity_mapping = json.load(file)      
 
-with open('input/redial/redial_context_movie_id2crslab_entityId.json', 'r', encoding='utf-8') as file:
+with open('ExtractProject/input/redial/redial_context_movie_id2crslab_entityId.json', 'r', encoding='utf-8') as file:
     movie_entiy_mapping = json.load(file)   
 
 
-ratings = pd.read_excel('input/redial/ratings.xlsx')
+ratings = pd.read_excel('ExtractProject/input/redial/ratings.xlsx')
 
 # Initialize a dictionary to hold user interactions
 
@@ -189,7 +189,7 @@ movie_to_index = {}
 
 def createUniqueMapping(unique_movies, unique_users):
     print("createUniqueMapping")
-    with open('input/redial/user_list.txt') as f:
+    with open('ExtractProject/input/redial/user_list.txt') as f:
             check = False
             for l in f.readlines():
                 if check :
@@ -202,7 +202,7 @@ def createUniqueMapping(unique_movies, unique_users):
                 else : 
                     check = True         
 
-    with open('input/redial/item_list.txt') as f:
+    with open('ExtractProject/input/redial/item_list.txt') as f:
         check = False
         for l in f.readlines():
             if check :
@@ -714,23 +714,21 @@ def create_interaction_dataset(interaction_matrix, user_interactions,user_rating
        
 
 movie_to_index, user_to_index = createUniqueMapping(unique_movies, unique_users)
-interaction_matrix = init_interaction_matrix(unique_users, unique_movies)
-process_original_dataset(user_to_index,movie_to_index)
-statics_data(allConvsIda, allConv,train_conv + test_conv + val_conv,users_training, users_training_count) 
-create_new_data(allConvsIda, allConv,train_conv + test_conv + val_conv, users_training_count, newConversations) 
+# interaction_matrix = init_interaction_matrix(unique_users, unique_movies)
+# process_original_dataset(user_to_index,movie_to_index)
+# statics_data(allConvsIda, allConv,train_conv + test_conv + val_conv,users_training, users_training_count) 
+# create_new_data(allConvsIda, allConv,train_conv + test_conv + val_conv, users_training_count, newConversations) 
 
-newSmallTest, newTrain = split_convs_proportionally(newConversations, 20)
-newVal, newTest = split_convs_randomly_just_split(newSmallTest, 50 )
-process_data(newTrain,movieLikedDict, userRelations, token_freq, recommenderSeekerTracking)
-processFriends(movieLikedDict, userRelations, recommenderSeekerTracking) 
-processUserRelationsWeight(movieLikedDict, userRelations) 
-process_test_data(newTest)
-process_test_data(newVal)
-create_interaction_matrix(newTrain, interaction_matrix, movie_to_index)
-create_user_item_ratings(interaction_matrix,user_interactions,user_ratings,item_interactions, item_ratings )
-create_interaction_dataset(interaction_matrix, user_interactions,user_ratings,item_interactions, item_ratings)
-
-
+# newSmallTest, newTrain = split_convs_proportionally(newConversations, 20)
+# newVal, newTest = split_convs_randomly_just_split(newSmallTest, 50 )
+# process_data(newTrain,movieLikedDict, userRelations, token_freq, recommenderSeekerTracking)
+# processFriends(movieLikedDict, userRelations, recommenderSeekerTracking) 
+# processUserRelationsWeight(movieLikedDict, userRelations) 
+# process_test_data(newTest)
+# process_test_data(newVal)
+# create_interaction_matrix(newTrain, interaction_matrix, movie_to_index)
+# create_user_item_ratings(interaction_matrix,user_interactions,user_ratings,item_interactions, item_ratings )
+# create_interaction_dataset(interaction_matrix, user_interactions,user_ratings,item_interactions, item_ratings)
 
 
 
@@ -738,35 +736,37 @@ create_interaction_dataset(interaction_matrix, user_interactions,user_ratings,it
 
 
 
-users_training = list(users_training)
+
+
+# users_training = list(users_training)
 
 
 
 
 
 
-with open('outputSISSF/train_data.json', 'w') as json_file:
-    json.dump(newTrain, json_file, indent=4)
+with open('movie_to_index.json', 'w') as json_file:
+    json.dump(movie_to_index, json_file, indent=4)
 
-with open('outputSISSF/valid_data.json', 'w') as json_file:
-    json.dump(newTest, json_file, indent=4)    
+# with open('outputSISSF/valid_data.json', 'w') as json_file:
+#     json.dump(newTest, json_file, indent=4)    
 
-with open('outputSISSF/test_data.json', 'w') as json_file:
-    json.dump(newVal, json_file, indent=4)
-
-
-with open('outputSISSF/token2id.json', 'w') as json_file:
-    json.dump(token_mapping, json_file, indent=4)
-
-with open('outputSISSF/token_freq.json', 'w') as json_file:
-    json.dump(token_freq, json_file, indent=4)    
+# with open('outputSISSF/test_data.json', 'w') as json_file:
+#     json.dump(newVal, json_file, indent=4)
 
 
+# with open('outputSISSF/token2id.json', 'w') as json_file:
+#     json.dump(token_mapping, json_file, indent=4)
+
+# with open('outputSISSF/token_freq.json', 'w') as json_file:
+#     json.dump(token_freq, json_file, indent=4)    
 
 
 
-print(len(newTest))
-print(len(newTrain))
-print(len(newVal))
+
+
+# print(len(newTest))
+# print(len(newTrain))
+# print(len(newVal))
 
 

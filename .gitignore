@@ -7,3 +7,6 @@
 *.log
 dist
 .vcode
+*.state
+*.tsv
+*.rar

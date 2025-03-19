@@ -11,7 +11,6 @@ import torch.nn.functional as F
 from torch import nn
 from util.logconf import logging
 from model.rec_trans import RecommenderTransformer
-from model.auto_encoder import AutoRec
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)

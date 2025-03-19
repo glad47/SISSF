@@ -26,7 +26,12 @@ from util.logconf import logging
 from model.semantic_fusion import SemanticFusion
 from model.recommendation_task import RecommenderModule
 from model.conversational_task import ConversationalModule
+from flask import Flask, request, jsonify
+from data.SingleDataset import SingleDataset
+from flask_cors import CORS
+app = Flask(__name__)
 
+CORS(app)
 import time
 
 import logging as lg
@@ -78,20 +83,24 @@ class SISSF:
             sys_argv = sys.argv[1:]
 
         parser = argparse.ArgumentParser()
+        parser.add_argument('--deployment',
+            help='Deployment option',
+            default=True,
+        )
         parser.add_argument('--batch-size',
             help='Batch size to use for training',
-            default=300,
+            default=1,
             type=int,
         )
         parser.add_argument('--test-batch-size',
             help='Test Batch size to use for training',
-            default=300,
+            default=1,
             type=int,
         )
 
         parser.add_argument('--valid-batch-size',
             help='Validation Batch size to use for training',
-            default=300,
+            default=1,
             type=int,
         )
         parser.add_argument('--num-workers',
@@ -111,11 +120,11 @@ class SISSF:
         )
         parser.add_argument('--mode',
             help="semantic -> semantic fusion, rec -> recommendation model, conv -> conversational model",
-            default="semantic",
+            default="conv",
         )
         parser.add_argument('--test-mode',
             help="Test mode",
-            default=False,
+            default=True,
         ) 
         parser.add_argument('--lr',
             help="The learning rate",
@@ -124,7 +133,7 @@ class SISSF:
         )
         parser.add_argument('--lr-bert',
             help="A separate learning rate for BERT components",
-            default=1e-5,
+            default=0.00001,
             type=float
         )
         parser.add_argument('--gradient-clip',
@@ -156,7 +165,7 @@ class SISSF:
 
         parser.add_argument('--resume-learning',
             help="Start finetuning from this model.",
-            default=None,
+            default="output/conv/ReDial_semantic_conv.state",
         )
 
         parser.add_argument('--dataset',
@@ -318,7 +327,7 @@ class SISSF:
         
         parser.add_argument('--tem',
             help="softmax temperature",
-            default=0.07,
+            default=0.13,
             type=float,
         )
         
@@ -340,14 +349,14 @@ class SISSF:
         
         parser.add_argument('--conv-heads',
             help="number of head to recommender transformer",
-            default=2,
+            default=4,
             type=int,
         )
 
 
         parser.add_argument('--conv-layers',
             help="number of layers to recommender transformer",
-            default=2,
+            default=4,
             type=int,
         )
 
@@ -478,12 +487,14 @@ class SISSF:
             lr =self.cli_args.lr
             ts =self.cli_args.test_mode
             epochs =self.cli_args.epochs
+            deployment = self.cli_args.deployment
             self.cli_args = checkpoint['sys_argv']
             self.cli_args.batch_size = batch_size
             self.cli_args.lr = lr
             self.cli_args.test_mode = ts
             self.cli_args.epochs = epochs
             self.cli_args.pretrain_token_embeddings_weights = None
+            self.cli_args.deployment = deployment
             log.info("Resume learning {}, {}".format(type(self).__name__, self.cli_args))
             current_lr = next(iter(self.optimizer.param_groups))['lr']
             log.info(f"Resuming with learning rate: {current_lr}")
@@ -1316,15 +1327,46 @@ class SISSF:
             self.initTestDataloaders()
             testMetrics_t = self.doTesting(0)
             score = self.logMetrics(0, 'test', testMetrics_t)       
-          
+    def handle_post_predict(self):
+        data = request.get_json()
+        self.reqest_data =SingleDataset(self.dataset._raw_data_process_test( data , "Processing Requested Conversation"))
+        # Assuming self.request_data is an array/list
+        print(len(self.reqest_data))
+        last_item = [self.reqest_data[-1]]
+        test_batch_size = self.cli_args.test_batch_size
+        self.request_dl = DataLoader(
+            last_item,
+            batch_size=test_batch_size,
+            num_workers=self.cli_args.num_workers,
+            pin_memory=self.use_cuda,
+            collate_fn= self.dataset.batchify
+        )
+        with torch.no_grad():
+            self.model.eval()
+            if self.cli_args.mode == 'rec' or  self.cli_args.mode == 'conv':
+                self.semantic_model.eval()
+
+            for batch_tup in self.request_dl:
+                result = self.model(self.semantic_model, batch_tup)
+                print(result)
+                return jsonify({"generatedResponse" : result})   
+        
+
       
-    
+    def deploy(self):
+        app.route("/predict", methods=["POST"])(self.handle_post_predict)
+        # run the Flask app
+        app.run(host='0.0.0.0', port=8999)
 
     def main(self):
-        if self.cli_args.mode == 'rec':
-            self.mainV2()
-        else:
-            self.mainV1() 
+        if self.cli_args.deployment:
+            self.deploy()
+        else:     
+            if self.cli_args.mode == 'rec':
+                self.mainV2()
+            else:
+                self.mainV1() 
+        
 
 
 
