@@ -31,14 +31,14 @@ Hope it can help you!
 
 ## Datasets and Other Resource
 ### Datasets
-We use two datasets in our paper [ReDial dataset](https://papers.nips.cc/paper/2018/file/800de15c79c8d840f4e78d3af937d4d4-Paper.pdf) and [INSPIRED dataset](https://aclanthology.org/2020.emnlp-main.654.pdf), all of which have been uploaded to [Google Drive](https://drive.google.com/file/d/11yUFFz8iI5hYZxFjlOnLQpqjt0T8J18x/view?usp=sharing) and [Baidu Netdisk](https://pan.baidu.com/s/1zrV5SbAt5X-C1SLkja3sqQ) (password: zmfm).
+We use two datasets in our paper [ReDial dataset](https://papers.nips.cc/paper/2018/file/800de15c79c8d840f4e78d3af937d4d4-Paper.pdf) and [INSPIRED dataset](https://aclanthology.org/2020.emnlp-main.654.pdf), all of which have been uploaded to [Google Drive](https://drive.google.com/file/d/1Tufg_61BlMMp94TL8EvpuwDrHFClvMEA/view?usp=drive_link) and [Baidu Netdisk](https://pan.baidu.com/s/1zW1Uy6ARF_qS2x2VKziS7Q) (password: i8mg).
 
 The downloaded `dataset` folder should be placed in the `data` folder.
 
 in case you want to generate the datasets used for the project you can check `ExtractProject` folder and check `README.md` file for more information. 
 
 ### Saved Models
-We have trained our model on the datasets mentioned above, all of which have been uploaded to [Google Drive](https://drive.google.com/file/d/1fY-4i5MxnZxb31bDlRA8dcGp-RYkDC8n/view?usp=sharing) and [Baidu Netdisk](https://pan.baidu.com/s/11_LATzJsnvGo6oFgSQ5beg) (password: fhro).
+We have trained our model on the datasets mentioned above, all of which have been uploaded to [Google Drive](https://drive.google.com/file/d/1nfi1uKyuOJTwz5NDgU-X-ilN1_OzKd5l/view?usp=sharing) and [Baidu Netdisk](https://pan.baidu.com/s/1KLjWj1sIsJJ3bUuiN0tm2g) (password: salt).
 
 The downloaded `weights` folder contains weights files for different mode, and then move its content to the `output` folder.
 

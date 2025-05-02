@@ -1,7 +1,7 @@
 
 ## Author: ggffhh3344@gmail.com Abdulaziz Ahmed
 ## Date: 2024-06-11 11:15:59
-## LastEditTime: 2024-08-18 10:15:14
+## LastEditTime: 2025-04-08 12:08:18
 
 import torch
 import torch.nn as nn
@@ -13,6 +13,9 @@ from model.attention import SelfAttentionBatch, SelfAttentionSeq
 import math
 import random
 import time
+from torch_geometric.nn import GCNConv
+from torch_geometric.nn import TransformerConv
+from torch_geometric.nn import GATConv
 class SocialInformation(nn.Module):
 
     def __init__(self, dir_data,dtype, embed_dim, user_embed_dim, items, num_bases, device, SELF_LOOP_ID=185):
@@ -33,7 +36,8 @@ class SocialInformation(nn.Module):
         self.num_ratings = self.ratings_list.__len__()
         
         self.load_data()
-        self.load_data_social()
+        #self.load_data_social()
+        self.load_data_GTO()
         self._build_model()
 
 
@@ -44,6 +48,26 @@ class SocialInformation(nn.Module):
             path_data = self.dir_data + "/" + self.dtype +  "/inspired_interactions.pickle"    
         data_file = open(path_data, 'rb')
         return pickle.load(data_file)
+
+    def load_data_GTO(self):
+        edge_list = []  # [(user, user)]
+        for user, relations in self.social_adj_lists.items():
+            edge_list.append((user, user))  # add self loop
+            for connected_user in relations:
+                edge_list.append((user, connected_user))
+    
+        edges = set()
+        nodes = set()
+        
+        # Convert to edge list
+        for h, t in edge_list:
+            edges.add((h, t))
+            nodes.add(h)
+            nodes.add(t)
+    
+        # Convert to tensor for GCN
+        self.edge_idx_gat = torch.tensor([[h, t] for h, t in edges], dtype=torch.long).to(self.device)
+        self.edge_idx_gat = self.edge_idx_gat.t()  # Transpose for PyTorch geometric format
     
     def load_data_social(self):
         edge_list = []  # [(user, user)]
@@ -131,7 +155,14 @@ class SocialInformation(nn.Module):
     
     def _build_user_interaction_social_graphs(self):
         self.interaction_encoder = RGCNConv(self.num_items + self.num_users, self.user_embed_dim, self.n_relation, num_bases=self.num_bases)
-        self.social_relation_encoder= RGCNConv(self.num_users, self.user_embed_dim, self.n_relation_social, num_bases=self.num_bases)
+        self.social_relation_encoder = TransformerConv(
+            in_channels=self.user_embed_dim,
+            out_channels=self.user_embed_dim,
+            heads=1,  # Multi-head attention
+            dropout=0.1  # Optional dropout for attention
+        )
+        self.user_embeddings = nn.Embedding(self.num_users, self.user_embed_dim)  # Learnable user embeddings
+        self.node_features = self.user_embeddings.weight
         self.item_attn = SelfAttentionBatch(self.embed_dim, self.embed_dim)
     
 
@@ -181,7 +212,8 @@ class SocialInformation(nn.Module):
     def _get_user_recomendation_rep(self, users):
         # (bs, n_item)
         item_embeddings = self.interaction_encoder(None, self.edge_idx, self.edge_type) # (bs, all_ns_item + all_ns_user)
-        social_relations_embeddings = self.social_relation_encoder(None, self.edge_idx_social, self.edge_type_social) # (bs, all_ns_user)
+        social_relations_embeddings = self.social_relation_encoder(self.node_features,self.edge_idx_gat) # (bs, all_ns_user)
+        # print(social_relations_embeddings.shape)
         user_interaction_item_rep = self._encode_social_profile(users, item_embeddings, social_relations_embeddings)  # (bs, dim), (bs, ns_social_profile ,dim)
         return user_interaction_item_rep # (bs, dim), (bs, ns_social_profile ,dim)
     
@@ -224,7 +256,7 @@ class SocialInformation(nn.Module):
     def _get_social_info_rep(self, context_items):
         # (bs, n_item)
         item_embeddings = self.interaction_encoder(None, self.edge_idx, self.edge_type) # (bs, all_ns_item + all_ns_user)
-        social_relations_embeddings = self.social_relation_encoder(None, self.edge_idx_social, self.edge_type_social)
+        social_relations_embeddings = self.social_relation_encoder(self.node_features,self.edge_idx_gat)
         social_info, social_reps = self._encode_user_profile(context_items, item_embeddings, social_relations_embeddings)  # (bs, dim), (bs, ns_social_profile ,dim)
         return social_info, social_reps # (bs, dim), (bs, ns_social_profile ,dim)
     
