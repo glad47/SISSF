@@ -1,0 +1,25 @@
+cff-version: 1.0.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Mohammed"
+  given-names: "Abdulaziz"
+- family-names: "Zhang"
+  given-names: "Mingwei"
+- family-names: "Amran"
+  given-names: "Gehad Abdullah"
+- family-names: "Alawadh"
+  given-names: "Husam M "
+- family-names: "Wang"
+  given-names: "Ruizhe"
+- family-names: "ALabrah"
+  given-names: "Amerah"
+- family-names: "Al-Bakhrani"
+  given-names: "Ali A"
+
+
+
+title: " A social information sensitive model for conversational recommender systems"
+version: 1.0.0
+doi: 10.5281/zenodo.15368530
+date-released: 2025-05-01
+url: "https://github.com/glad47/SISSF"
