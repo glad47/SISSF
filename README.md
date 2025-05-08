@@ -3,6 +3,8 @@
 #  A social information sensitive model for conversational recommender systems
 The source code for our SISSF 2024 Paper [**" A social information sensitive model for conversational recommender systems"**](https://xxxx)
 Abdulaziz Mohammed, Mingwei Zhang, Gehad Abdullah Amran, Husam M. Alawadh, Ruizhe Wang, Amerah ALabrah, and Ali A. Al-Bakhrani
+[![DOI](https://zenodo.org/badge/844036813.svg)](https://doi.org/10.5281/zenodo.15368529)
+
 
 ## Requirements
 * loguru == 0.7.2
